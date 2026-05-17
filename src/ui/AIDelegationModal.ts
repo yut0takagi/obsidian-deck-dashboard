@@ -21,6 +21,10 @@ export interface AIDelegationOptions {
   taskFile: TFile;
   vaultRoot: string;
   claudeCmd?: string;
+  /** frontmatter field for kanban status (default: "status") */
+  statusField?: string;
+  /** value to set when AI run succeeds (default: "レビュー待ち") */
+  successStatus?: string;
 }
 
 export class AIDelegationModal extends Modal {
@@ -131,6 +135,21 @@ export class AIDelegationModal extends Modal {
     new Notice("AIセッションを中止しました");
   }
 
+  /** On success, move task to the success column (default: レビュー待ち). */
+  private async advanceStatus(): Promise<boolean> {
+    const field = this.opts.statusField ?? "status";
+    const next = this.opts.successStatus ?? "レビュー待ち";
+    try {
+      await this.app.fileManager.processFrontMatter(this.opts.taskFile, (fm: any) => {
+        fm[field] = next;
+      });
+      return true;
+    } catch (e) {
+      new Notice(`status更新失敗: ${(e as Error).message}`);
+      return false;
+    }
+  }
+
   private async run(): Promise<void> {
     if (!this.promptArea || !this.modeSelect || !this.runBtn) return;
     if (this.running) {
@@ -238,7 +257,11 @@ export class AIDelegationModal extends Modal {
 
       // Notify regardless of modal state.
       if (res.ok) {
-        new Notice(`AI移譲完了: ${this.opts.taskFile.basename} (${(dur / 1000).toFixed(1)}s)`);
+        const moved = await this.advanceStatus();
+        const tail = moved ? ` → ${this.opts.successStatus ?? "レビュー待ち"}` : "";
+        new Notice(
+          `AI移譲完了: ${this.opts.taskFile.basename} (${(dur / 1000).toFixed(1)}s)${tail}`
+        );
       } else {
         new Notice(`AI移譲失敗 (code=${res.code}) — ログ参照`);
       }

@@ -164,6 +164,8 @@ async function renderKanban(
           app: ctx.app,
           taskFile: f,
           vaultRoot,
+          statusField: settings.statusField,
+          successStatus: pickSuccessStatus(settings.columns),
         }).open();
       }
     });
@@ -246,6 +248,19 @@ function deadlineClass(date: string): string {
   if (diff === 0) return "nd-deadline-today";
   if (diff <= 3) return "nd-deadline-soon";
   return "nd-deadline-other";
+}
+
+/**
+ * Best-effort pick of the column to move a task to after AI delegation
+ * succeeds. Prefers an existing "レビュー待ち" column; otherwise falls back
+ * to the column immediately after AI移譲 in the user's config.
+ */
+function pickSuccessStatus(columns: string[]): string {
+  const review = columns.find((c) => /レビュー|review/i.test(c));
+  if (review) return review;
+  const idx = columns.indexOf(AI_DELEGATE_COLUMN);
+  if (idx >= 0 && idx + 1 < columns.length) return columns[idx + 1];
+  return "レビュー待ち";
 }
 
 function collectTasks(app: any, settings: Settings): TaskItem[] {
