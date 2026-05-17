@@ -125,9 +125,10 @@ function buildSampleHome(): Dashboard {
       { i: "kpi-tasks", x: 0, y: 1, w: 4, h: 3 },
       { i: "kpi-meetings", x: 4, y: 1, w: 4, h: 3 },
       { i: "kpi-knowledge", x: 8, y: 1, w: 4, h: 3 },
-      { i: "tasks-today", x: 0, y: 2, w: 6, h: 6 },
-      { i: "recent-minutes", x: 6, y: 2, w: 6, h: 6 },
-      { i: "recent-daily", x: 0, y: 3, w: 12, h: 5 },
+      { i: "today-cal", x: 0, y: 2, w: 6, h: 7 },
+      { i: "tasks-today", x: 6, y: 2, w: 6, h: 7 },
+      { i: "recent-minutes", x: 0, y: 3, w: 6, h: 6 },
+      { i: "recent-daily", x: 6, y: 3, w: 6, h: 6 },
     ],
     widgets: {
       welcome: {
@@ -167,6 +168,15 @@ function buildSampleHome(): Dashboard {
           query: 'LIST FROM "ナレッジ" WHERE !contains(file.name, "ナレッジマップ")',
           label: "ナレッジ総数",
           unit: "件",
+        },
+      },
+      "today-cal": {
+        type: "calendar",
+        title: "今週の予定",
+        settings: {
+          icalUrl: "",
+          windowDays: 7,
+          maxEvents: 30,
         },
       },
       "tasks-today": {

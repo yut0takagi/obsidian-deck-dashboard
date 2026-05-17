@@ -189,6 +189,62 @@
   font-size: 0.9em;
 }
 
+/* Calendar widget */
+.nd-widget-calendar .nd-cal-day {
+  font-weight: 600;
+  color: var(--text-accent);
+  margin: 10px 0 4px;
+  font-size: 0.9em;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 2px;
+}
+
+.nd-widget-calendar .nd-cal-day:first-child {
+  margin-top: 0;
+}
+
+.nd-widget-calendar .nd-cal-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 0 0 4px 0;
+}
+
+.nd-widget-calendar .nd-cal-event {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  font-size: 0.9em;
+  border-bottom: 1px dashed var(--background-modifier-border);
+}
+
+.nd-widget-calendar .nd-cal-event:last-child {
+  border-bottom: none;
+}
+
+.nd-widget-calendar .nd-cal-time {
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  min-width: 96px;
+  flex-shrink: 0;
+}
+
+.nd-widget-calendar .nd-cal-time.nd-cal-allday {
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+.nd-widget-calendar .nd-cal-summary {
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.nd-widget-calendar .nd-cal-location {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
 /* Modal */
 .nd-widget-picker {
   display: grid;
