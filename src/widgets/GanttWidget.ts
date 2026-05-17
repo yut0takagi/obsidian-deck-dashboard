@@ -41,10 +41,16 @@ const ZOOM_LEVELS = [8, 12, 16, 24, 32, 48, 64];
 
 // Ephemeral per-render state, keyed by widget DOM element. Survives re-renders
 // of the same widget but isn't persisted to .dashboard JSON.
-const viewState = new WeakMap<
-  HTMLElement,
-  { zoomIdx: number; offsetDays: number }
->();
+interface GanttViewState {
+  zoomIdx: number;
+  offsetDays: number;
+  // Extra days added by infinite-scroll expansion (on top of settings.windowDaysBack/Forward)
+  extraBack: number;
+  extraForward: number;
+}
+const viewState = new WeakMap<HTMLElement, GanttViewState>();
+const EDGE_THRESHOLD_PX = 200;
+const EXPAND_DAYS = 60;
 
 export const ganttWidget: WidgetDefinition<Settings> = {
   type: "gantt",
@@ -173,18 +179,22 @@ async function renderGantt(
   el.empty();
   el.addClass("nd-widget-gantt");
 
-  // Ephemeral view state — zoom & shift
-  const state = viewState.get(el) ?? {
+  // Ephemeral view state — zoom & shift + infinite-scroll expansion
+  const state: GanttViewState = viewState.get(el) ?? {
     zoomIdx: nearestZoomIdx(settings.dayWidth),
     offsetDays: 0,
+    extraBack: 0,
+    extraForward: 0,
   };
   viewState.set(el, state);
   const dayWidth = ZOOM_LEVELS[state.zoomIdx];
 
   const today = startOfDay(new Date());
   const today0 = new Date(today.getTime() + state.offsetDays * DAY_MS);
-  const windowStart = new Date(today0.getTime() - settings.windowDaysBack * DAY_MS);
-  const windowEnd = new Date(today0.getTime() + settings.windowDaysForward * DAY_MS);
+  const effectiveBack = settings.windowDaysBack + state.extraBack;
+  const effectiveForward = settings.windowDaysForward + state.extraForward;
+  const windowStart = new Date(today0.getTime() - effectiveBack * DAY_MS);
+  const windowEnd = new Date(today0.getTime() + effectiveForward * DAY_MS);
   const totalDays = Math.round((windowEnd.getTime() - windowStart.getTime()) / DAY_MS);
 
   // Toolbar
@@ -198,6 +208,8 @@ async function renderGantt(
   });
   mkBtn(left, "今日", () => {
     state.offsetDays = 0;
+    state.extraBack = 0;
+    state.extraForward = 0;
     renderGantt(el, settings, ctx);
   });
   mkBtn(left, "次へ »", () => {
@@ -225,6 +237,8 @@ async function renderGantt(
   mkBtn(right, "リセット", () => {
     state.zoomIdx = nearestZoomIdx(settings.dayWidth);
     state.offsetDays = 0;
+    state.extraBack = 0;
+    state.extraForward = 0;
     renderGantt(el, settings, ctx);
   });
 
@@ -405,11 +419,49 @@ async function renderGantt(
     todayLine.style.left = `${todayDays * dayWidth + dayWidth / 2}px`;
   }
 
-  // Auto-scroll horizontally so today is near left edge of body
-  setTimeout(() => {
-    scroll.scrollLeft = Math.max(0, todayDays * dayWidth - 80);
-  }, 0);
+  // Auto-scroll horizontally so today is near left edge of body — but only
+  // when we DON'T already have a meaningful scroll position (i.e., on first
+  // render or after zoom/jump). After an infinite-scroll expansion we instead
+  // preserve the visual position via pendingScrollLeft below.
+  if (typeof pendingScrollLeft === "number") {
+    setTimeout(() => {
+      scroll.scrollLeft = pendingScrollLeft as number;
+    }, 0);
+  } else {
+    setTimeout(() => {
+      scroll.scrollLeft = Math.max(0, todayDays * dayWidth - 80);
+    }, 0);
+  }
+
+  // Infinite scroll: expand window when user scrolls near either edge.
+  let expanding = false;
+  scroll.addEventListener("scroll", () => {
+    if (expanding) return;
+    const left = scroll.scrollLeft;
+    const right = scroll.scrollWidth - (scroll.scrollLeft + scroll.clientWidth);
+    if (left < EDGE_THRESHOLD_PX) {
+      expanding = true;
+      state.extraBack += EXPAND_DAYS;
+      // Preserve visual position: the content shifted right by EXPAND_DAYS*dayWidth
+      pendingScrollLeft = scroll.scrollLeft + EXPAND_DAYS * dayWidth;
+      renderGantt(el, settings, ctx).finally(() => {
+        pendingScrollLeft = null;
+        expanding = false;
+      });
+    } else if (right < EDGE_THRESHOLD_PX) {
+      expanding = true;
+      state.extraForward += EXPAND_DAYS;
+      pendingScrollLeft = scroll.scrollLeft; // content extended to the right; no shift needed
+      renderGantt(el, settings, ctx).finally(() => {
+        pendingScrollLeft = null;
+        expanding = false;
+      });
+    }
+  });
 }
+
+// Carries scrollLeft across re-renders triggered by infinite-scroll edge expansion
+let pendingScrollLeft: number | null = null;
 
 function mkBtn(parent: HTMLElement, text: string, on: () => void): HTMLElement {
   const b = parent.createEl("button", { cls: "nd-gantt-btn", text });
