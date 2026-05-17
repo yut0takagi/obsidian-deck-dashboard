@@ -50,6 +50,7 @@
   flex-direction: column;
   overflow: hidden;
   transition: border-color 0.15s ease;
+  min-height: 0; /* allow body to shrink + scroll */
 }
 
 .nd-grid.nd-edit .nd-widget {
@@ -107,6 +108,7 @@
   overflow-x: auto;
   font-size: 0.92em;
   line-height: 1.5;
+  min-height: 0; /* critical for inner flex children to scroll */
 }
 
 .nd-widget-body table {
@@ -320,12 +322,16 @@
 /* Kanban widget */
 .nd-widget-kanban {
   height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .nd-kanban-board {
   display: flex;
   gap: 10px;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   overflow-x: auto;
   padding-bottom: 4px;
 }
@@ -333,6 +339,7 @@
 .nd-kanban-col {
   flex: 1;
   min-width: 180px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background: var(--background-primary-alt);
