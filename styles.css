@@ -189,6 +189,78 @@
   font-size: 0.9em;
 }
 
+/* Today widget */
+.nd-widget-today {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+.nd-today-wrap {
+  text-align: center;
+}
+
+.nd-today-greeting {
+  font-size: 0.95em;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.nd-today-date {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.nd-today-month {
+  font-size: 1.2em;
+  color: var(--text-muted);
+}
+
+.nd-today-day {
+  font-size: 3.2em;
+  font-weight: 800;
+  color: var(--interactive-accent);
+  letter-spacing: -0.04em;
+}
+
+.nd-today-weekday {
+  font-size: 1.3em;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.nd-today-year {
+  font-size: 0.85em;
+  color: var(--text-faint);
+  font-family: var(--font-monospace);
+  margin-bottom: 12px;
+}
+
+.nd-today-links {
+  margin-top: 6px;
+}
+
+.nd-today-daily-link {
+  font-size: 0.9em;
+  text-decoration: none;
+  padding: 4px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  color: var(--text-normal);
+  cursor: pointer;
+  display: inline-block;
+}
+
+.nd-today-daily-link:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
 /* Calendar widget */
 .nd-widget-calendar .nd-cal-day {
   font-weight: 600;

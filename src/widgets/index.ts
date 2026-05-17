@@ -5,8 +5,10 @@ import { dataviewWidget } from "./DataviewWidget";
 import { counterWidget } from "./CounterWidget";
 import { calendarWidget } from "./CalendarWidget";
 import { googleCalendarWidget } from "./GoogleCalendarWidget";
+import { todayWidget } from "./TodayWidget";
 
 export function registerBuiltinWidgets(): void {
+  widgetRegistry.register(todayWidget);
   widgetRegistry.register(markdownWidget);
   widgetRegistry.register(noteEmbedWidget);
   widgetRegistry.register(dataviewWidget);

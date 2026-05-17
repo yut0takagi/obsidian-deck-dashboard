@@ -160,43 +160,85 @@ function buildSampleHome(): Dashboard {
     version: 1,
     title: "ホーム",
     layout: [
-      { i: "welcome", x: 0, y: 0, w: 12, h: 4 },
-      { i: "kpi-tasks", x: 0, y: 1, w: 4, h: 3 },
-      { i: "kpi-meetings", x: 4, y: 1, w: 4, h: 3 },
-      { i: "kpi-knowledge", x: 8, y: 1, w: 4, h: 3 },
+      // Row 1: Today (4) + 3 KPI (8)
+      { i: "today", x: 0, y: 0, w: 4, h: 4 },
+      { i: "kpi-overdue", x: 4, y: 0, w: 2, h: 2 },
+      { i: "kpi-today", x: 6, y: 0, w: 2, h: 2 },
+      { i: "kpi-week", x: 8, y: 0, w: 2, h: 2 },
+      { i: "kpi-meetings", x: 10, y: 0, w: 2, h: 2 },
+      // Row 1b: 2 quick-status under KPI
+      { i: "kpi-tasks", x: 4, y: 1, w: 4, h: 2 },
+      { i: "kpi-knowledge", x: 8, y: 1, w: 4, h: 2 },
+      // Row 2: Today's schedule + today/overdue tasks
       { i: "today-cal", x: 0, y: 2, w: 6, h: 7 },
       { i: "tasks-today", x: 6, y: 2, w: 6, h: 7 },
-      { i: "recent-minutes", x: 0, y: 3, w: 6, h: 6 },
-      { i: "recent-daily", x: 6, y: 3, w: 6, h: 6 },
+      // Row 3: This week's deadlines + project status
+      { i: "tasks-week", x: 0, y: 3, w: 6, h: 5 },
+      { i: "tasks-by-pjt", x: 6, y: 3, w: 6, h: 5 },
+      // Row 4: Recent activity
+      { i: "recent-minutes", x: 0, y: 4, w: 6, h: 5 },
+      { i: "recent-daily", x: 6, y: 4, w: 6, h: 5 },
+      // Row 5: Quick links
+      { i: "quick-links", x: 0, y: 5, w: 12, h: 4 },
     ],
     widgets: {
-      welcome: {
-        type: "markdown",
-        title: "ようこそ",
+      today: {
+        type: "today",
+        title: "今日",
         settings: {
-          content:
-            "# ようこそ Notion Dashboard へ\n\n" +
-            "このウィジェットは自由に編集できる。⚙アイコンから内容を変更しよう。\n" +
-            "- `+ ウィジェット追加` で新しいウィジェットを足す\n" +
-            "- `✎ 編集モード` で並び替え・幅変更ができる\n" +
-            "- タイトル(上の `ホーム`)をクリックでリネーム",
+          greeting: "おはよう ☀️",
+          dailyFolder: "日報",
+          dailyFormat: "YYYY/YYYY-MM-DD",
         },
       },
-      "kpi-tasks": {
+      "kpi-overdue": {
         type: "counter",
-        title: "未完了タスク",
+        title: "期限超過",
         settings: {
-          query: 'LIST FROM "タスク/詳細" WHERE status != "完了"',
-          label: "未完了タスク",
+          query:
+            'LIST FROM "タスク/詳細"\n' +
+            'WHERE status != "完了" AND 期限 != null AND 期限 != "なし" AND date(期限) < date(today)',
+          label: "🔥 期限超過",
+          unit: "件",
+        },
+      },
+      "kpi-today": {
+        type: "counter",
+        title: "今日締切",
+        settings: {
+          query:
+            'LIST FROM "タスク/詳細"\n' +
+            'WHERE status != "完了" AND 期限 = date(today)',
+          label: "📌 今日締切",
+          unit: "件",
+        },
+      },
+      "kpi-week": {
+        type: "counter",
+        title: "今週締切",
+        settings: {
+          query:
+            'LIST FROM "タスク/詳細"\n' +
+            'WHERE status != "完了" AND date(期限) >= date(today) AND date(期限) <= date(today) + dur(7 days)',
+          label: "📅 今週締切",
           unit: "件",
         },
       },
       "kpi-meetings": {
         type: "counter",
-        title: "今月の議事録",
+        title: "今週議事録",
         settings: {
-          query: 'LIST FROM "議事録" WHERE file.mday > date(today) - dur(30 days)',
-          label: "30日以内の議事録",
+          query: 'LIST FROM "議事録" WHERE file.cday >= date(today) - dur(7 days)',
+          label: "💬 7日以内議事録",
+          unit: "件",
+        },
+      },
+      "kpi-tasks": {
+        type: "counter",
+        title: "未完了タスク総数",
+        settings: {
+          query: 'LIST FROM "タスク/詳細" WHERE status != "完了"',
+          label: "📝 未完了タスク",
           unit: "件",
         },
       },
@@ -205,7 +247,7 @@ function buildSampleHome(): Dashboard {
         title: "ナレッジ件数",
         settings: {
           query: 'LIST FROM "ナレッジ" WHERE !contains(file.name, "ナレッジマップ")',
-          label: "ナレッジ総数",
+          label: "📚 ナレッジ",
           unit: "件",
         },
       },
@@ -220,20 +262,45 @@ function buildSampleHome(): Dashboard {
       },
       "tasks-today": {
         type: "dataview",
-        title: "今週のタスク",
+        title: "🔥 今日 + 期限超過タスク",
         settings: {
           mode: "dql",
           query:
-            'TABLE PJT, 期限, 優先度, status\n' +
+            'TABLE PJT, 期限 AS "期限", 優先度 AS "優先", status AS "状態"\n' +
+            'FROM "タスク/詳細"\n' +
+            'WHERE status != "完了" AND 期限 != null AND 期限 != "なし" AND date(期限) <= date(today)\n' +
+            'SORT date(期限) ASC',
+        },
+      },
+      "tasks-week": {
+        type: "dataview",
+        title: "📅 今週締切タスク (明日〜7日)",
+        settings: {
+          mode: "dql",
+          query:
+            'TABLE PJT, 期限 AS "期限", 優先度 AS "優先"\n' +
             'FROM "タスク/詳細"\n' +
             'WHERE status != "完了" AND 期限 != null AND 期限 != "なし"\n' +
-            'SORT 期限 ASC\n' +
-            'LIMIT 12',
+            '  AND date(期限) > date(today) AND date(期限) <= date(today) + dur(7 days)\n' +
+            'SORT date(期限) ASC',
+        },
+      },
+      "tasks-by-pjt": {
+        type: "dataview",
+        title: "📊 PJT別 未完了タスク",
+        settings: {
+          mode: "dql",
+          query:
+            'TABLE length(rows) AS "件数"\n' +
+            'FROM "タスク/詳細"\n' +
+            'WHERE status != "完了"\n' +
+            'GROUP BY PJT\n' +
+            'SORT length(rows) DESC',
         },
       },
       "recent-minutes": {
         type: "dataview",
-        title: "最近の議事録",
+        title: "💬 最近の議事録 (10件)",
         settings: {
           mode: "dql",
           query:
@@ -245,7 +312,7 @@ function buildSampleHome(): Dashboard {
       },
       "recent-daily": {
         type: "dataview",
-        title: "最近の日報",
+        title: "📝 最近の日報 (7件)",
         settings: {
           mode: "dql",
           query:
@@ -253,6 +320,23 @@ function buildSampleHome(): Dashboard {
             'FROM "日報"\n' +
             'SORT file.mtime DESC\n' +
             'LIMIT 7',
+        },
+      },
+      "quick-links": {
+        type: "markdown",
+        title: "🔗 クイックリンク / メモ",
+        settings: {
+          content:
+            "## 主要ノート\n" +
+            "- [[自分について]]\n" +
+            "- [[ONBOARDING]]\n" +
+            "- [[README]]\n\n" +
+            "## ダッシュボード操作\n" +
+            "- ⚙ で各ウィジェット編集 (入力は自動保存)\n" +
+            "- ✎ で並び替え・幅変更モード\n" +
+            "- ↻ で個別ウィジェット再読み込み\n" +
+            "- タイトル（上の「ホーム」）クリックでリネーム\n\n" +
+            "_このメモは自由に書き換えてOK_",
         },
       },
     },
