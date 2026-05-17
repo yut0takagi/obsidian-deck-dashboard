@@ -172,14 +172,16 @@ function buildSampleHome(): Dashboard {
       // Row 2: Today's schedule + today/overdue tasks
       { i: "today-cal", x: 0, y: 2, w: 6, h: 7 },
       { i: "tasks-today", x: 6, y: 2, w: 6, h: 7 },
-      // Row 3: This week's deadlines + project status
-      { i: "tasks-week", x: 0, y: 3, w: 6, h: 5 },
-      { i: "tasks-by-pjt", x: 6, y: 3, w: 6, h: 5 },
-      // Row 4: Recent activity
-      { i: "recent-minutes", x: 0, y: 4, w: 6, h: 5 },
-      { i: "recent-daily", x: 6, y: 4, w: 6, h: 5 },
-      // Row 5: Quick links
-      { i: "quick-links", x: 0, y: 5, w: 12, h: 4 },
+      // Row 3: Kanban (full width) — drag tasks across columns
+      { i: "kanban", x: 0, y: 3, w: 12, h: 8 },
+      // Row 4: This week's deadlines + project status
+      { i: "tasks-week", x: 0, y: 4, w: 6, h: 5 },
+      { i: "tasks-by-pjt", x: 6, y: 4, w: 6, h: 5 },
+      // Row 5: Recent activity
+      { i: "recent-minutes", x: 0, y: 5, w: 6, h: 5 },
+      { i: "recent-daily", x: 6, y: 5, w: 6, h: 5 },
+      // Row 6: Quick links
+      { i: "quick-links", x: 0, y: 6, w: 12, h: 4 },
     ],
     widgets: {
       today: {
@@ -270,6 +272,17 @@ function buildSampleHome(): Dashboard {
             'FROM "タスク/詳細"\n' +
             'WHERE status != "完了" AND 期限 != null AND 期限 != "なし" AND date(期限) <= date(today)\n' +
             'SORT date(期限) ASC',
+        },
+      },
+      kanban: {
+        type: "kanban",
+        title: "📋 Kanban (ドラッグで状態変更)",
+        settings: {
+          folder: "タスク/詳細",
+          statusField: "status",
+          columns: ["未着手", "作業中", "レビュー待ち", "完了"],
+          showFields: ["PJT", "期限", "優先度"],
+          hideCompleted: false,
         },
       },
       "tasks-week": {
