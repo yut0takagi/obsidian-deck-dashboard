@@ -7,6 +7,7 @@ import { calendarWidget } from "./CalendarWidget";
 import { googleCalendarWidget } from "./GoogleCalendarWidget";
 import { todayWidget } from "./TodayWidget";
 import { kanbanWidget } from "./KanbanWidget";
+import { ganttWidget } from "./GanttWidget";
 
 export function registerBuiltinWidgets(): void {
   widgetRegistry.register(todayWidget);
@@ -17,6 +18,7 @@ export function registerBuiltinWidgets(): void {
   widgetRegistry.register(calendarWidget);
   widgetRegistry.register(googleCalendarWidget);
   widgetRegistry.register(kanbanWidget);
+  widgetRegistry.register(ganttWidget);
 }
 
 export { widgetRegistry };

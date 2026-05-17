@@ -170,9 +170,11 @@ function buildSampleHome(): Dashboard {
       { i: "kpi-knowledge", x: 8, y: 1, w: 4, h: 2 },
       // Row 2: Kanban (full width) — drag tasks across columns
       { i: "kanban", x: 0, y: 2, w: 12, h: 8 },
+      // Row 2b: Gantt chart (full width)
+      { i: "gantt", x: 0, y: 3, w: 12, h: 8 },
       // Row 3: Today's schedule + today/overdue tasks
-      { i: "today-cal", x: 0, y: 3, w: 6, h: 7 },
-      { i: "tasks-today", x: 6, y: 3, w: 6, h: 7 },
+      { i: "today-cal", x: 0, y: 4, w: 6, h: 7 },
+      { i: "tasks-today", x: 6, y: 4, w: 6, h: 7 },
       // Row 4: This week's deadlines + project status
       { i: "tasks-week", x: 0, y: 4, w: 6, h: 5 },
       { i: "tasks-by-pjt", x: 6, y: 4, w: 6, h: 5 },
@@ -282,6 +284,23 @@ function buildSampleHome(): Dashboard {
           columns: ["未着手", "作業中", "レビュー待ち", "完了"],
           showFields: ["PJT", "期限", "優先度"],
           hideCompleted: false,
+        },
+      },
+      gantt: {
+        type: "gantt",
+        title: "📈 Gantt (PJT別)",
+        settings: {
+          folder: "タスク/詳細",
+          deadlineField: "期限",
+          startField: "開始",
+          durationField: "工数",
+          statusField: "status",
+          groupByField: "PJT",
+          windowDaysBack: 7,
+          windowDaysForward: 30,
+          rowHeight: 26,
+          dayWidth: 24,
+          hideCompleted: true,
         },
       },
       "tasks-week": {

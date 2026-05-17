@@ -492,6 +492,206 @@
   padding: 12px 0;
 }
 
+/* Gantt widget */
+.nd-widget-gantt {
+  height: 100%;
+  min-height: 0;
+}
+
+.nd-gantt-chart {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  font-size: 0.8em;
+}
+
+.nd-gantt-labels {
+  flex: 0 0 200px;
+  border-right: 2px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.nd-gantt-label-header {
+  height: 48px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 8px 6px;
+  font-weight: 700;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-primary-alt);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.nd-gantt-group-label {
+  padding: 4px 8px;
+  font-weight: 700;
+  background: var(--background-secondary);
+  color: var(--text-accent);
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 0.92em;
+  display: flex;
+  align-items: center;
+}
+
+.nd-gantt-task-label {
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--background-modifier-border);
+  overflow: hidden;
+}
+
+.nd-gantt-task-link {
+  color: var(--text-normal);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.nd-gantt-task-link:hover {
+  color: var(--text-accent);
+  text-decoration: underline;
+}
+
+.nd-gantt-grid {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  background: var(--background-primary);
+  position: relative;
+}
+
+.nd-gantt-grid-inner {
+  position: relative;
+  height: 100%;
+}
+
+.nd-gantt-grid-header {
+  position: sticky;
+  top: 0;
+  height: 48px;
+  background: var(--background-primary-alt);
+  border-bottom: 1px solid var(--background-modifier-border);
+  z-index: 2;
+}
+
+.nd-gantt-day-cell {
+  position: absolute;
+  top: 0;
+  height: 48px;
+  border-right: 1px solid var(--background-modifier-border);
+  text-align: center;
+  font-size: 0.85em;
+  padding: 2px 0;
+  box-sizing: border-box;
+}
+
+.nd-gantt-day-cell.nd-gantt-weekend {
+  background: var(--background-modifier-form-field);
+}
+
+.nd-gantt-day-cell.nd-gantt-today-col {
+  background: var(--background-modifier-success);
+  font-weight: 700;
+}
+
+.nd-gantt-month {
+  font-size: 0.75em;
+  color: var(--text-accent);
+  font-weight: 600;
+}
+
+.nd-gantt-day-num {
+  font-size: 1em;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.nd-gantt-weekday {
+  font-size: 0.7em;
+  color: var(--text-muted);
+}
+
+.nd-gantt-task-row {
+  position: absolute;
+  left: 0;
+  pointer-events: none;
+}
+
+.nd-gantt-task-row.nd-gantt-row-alt {
+  background: var(--background-secondary);
+  opacity: 0.4;
+}
+
+.nd-gantt-group-row {
+  position: absolute;
+  left: 0;
+  background: var(--background-modifier-form-field);
+  border-bottom: 1px solid var(--background-modifier-border);
+  pointer-events: none;
+}
+
+.nd-gantt-bar {
+  position: absolute;
+  top: 4px;
+  border-radius: 4px;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  font-size: 0.75em;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  pointer-events: auto;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.nd-gantt-bar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25);
+  z-index: 5;
+}
+
+.nd-gantt-bar-label {
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+
+.nd-gantt-bar-done {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.nd-gantt-bar-overdue {
+  background: #b71c1c !important;
+  color: white !important;
+}
+
+.nd-gantt-bar-prio-urgent { background: #ff5252; }
+.nd-gantt-bar-prio-high { background: #ff9800; color: white; }
+.nd-gantt-bar-prio-medium { background: #fbc02d; color: #333; }
+.nd-gantt-bar-prio-low { background: #9e9e9e; color: white; }
+
+.nd-gantt-today-line {
+  position: absolute;
+  top: 0;
+  width: 2px;
+  background: #ff5252;
+  pointer-events: none;
+  z-index: 3;
+  box-shadow: 0 0 4px rgba(255, 82, 82, 0.5);
+}
+
 /* Modal */
 .nd-widget-picker {
   display: grid;
