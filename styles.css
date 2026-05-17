@@ -1,0 +1,17 @@
+.notion-dashboard-view {
+  padding: 16px 24px;
+}
+
+.notion-dashboard-header h1 {
+  margin: 0 0 12px 0;
+  font-size: 1.6em;
+}
+
+.notion-dashboard-body {
+  margin-top: 8px;
+}
+
+.notion-dashboard-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
