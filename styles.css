@@ -1039,6 +1039,104 @@
   cursor: pointer;
 }
 
+/* AI Delegation Modal */
+.nd-ai-delegate-modal {
+  max-width: 720px;
+  width: 90vw;
+}
+
+.nd-ai-delegate-warn {
+  background: var(--background-modifier-error-hover);
+  border-left: 3px solid var(--text-error);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  margin-bottom: 12px;
+}
+
+.nd-ai-delegate-prompt {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  resize: vertical;
+  min-height: 12em;
+  margin-bottom: 12px;
+}
+
+.nd-ai-delegate-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.nd-ai-delegate-status {
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  padding: 4px 0;
+}
+
+.nd-ai-delegate-log {
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 8px;
+  font-family: var(--font-monospace);
+  font-size: 0.78em;
+  line-height: 1.5;
+}
+
+.nd-ai-log-line {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px dotted var(--background-modifier-border);
+}
+
+.nd-ai-log-line:last-child {
+  border-bottom: none;
+}
+
+.nd-ai-log-ts {
+  color: var(--text-muted);
+  flex: 0 0 auto;
+  opacity: 0.6;
+}
+
+.nd-ai-log-body {
+  flex: 1 1 auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.nd-ai-log-tool_use .nd-ai-log-body {
+  color: var(--text-accent);
+}
+
+.nd-ai-log-tool_result .nd-ai-log-body {
+  color: var(--text-muted);
+}
+
+.nd-ai-log-result .nd-ai-log-body {
+  color: var(--text-success, var(--interactive-accent));
+  font-weight: 600;
+}
+
+.nd-ai-log-error .nd-ai-log-body {
+  color: var(--text-error);
+}
+
+.nd-ai-log-text .nd-ai-log-body {
+  color: var(--text-normal);
+}
+
 /* Responsive */
 @media (max-width: 800px) {
   .nd-widget {

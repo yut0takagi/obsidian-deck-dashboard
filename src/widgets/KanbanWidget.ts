@@ -1,5 +1,8 @@
 import { Notice, Setting, TFile } from "obsidian";
 import type { WidgetDefinition, WidgetContext } from "./types";
+import { AIDelegationModal } from "../ui/AIDelegationModal";
+
+const AI_DELEGATE_COLUMN = "AI移譲";
 
 interface Settings {
   folder: string;
@@ -149,6 +152,20 @@ async function renderKanban(
       setTimeout(() => {
         renderKanban(el, settings, ctx);
       }, 80);
+
+      // AI delegate: spawn claude session for this task
+      if (col === AI_DELEGATE_COLUMN) {
+        const vaultRoot = (ctx.app.vault.adapter as any).getBasePath?.() as string | undefined;
+        if (!vaultRoot) {
+          new Notice("vaultパス取得失敗のためAI移譲をスキップ");
+          return;
+        }
+        new AIDelegationModal({
+          app: ctx.app,
+          taskFile: f,
+          vaultRoot,
+        }).open();
+      }
     });
 
     for (const task of colTasks) {
