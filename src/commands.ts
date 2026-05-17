@@ -181,8 +181,13 @@ function buildSampleHome(): Dashboard {
       // Row 5: Recent activity
       { i: "recent-minutes", x: 0, y: 5, w: 6, h: 5 },
       { i: "recent-daily", x: 6, y: 5, w: 6, h: 5 },
-      // Row 6: Quick links
-      { i: "quick-links", x: 0, y: 6, w: 12, h: 4 },
+      // Row 6: AI search + task creator
+      { i: "ai-search", x: 0, y: 6, w: 7, h: 6 },
+      { i: "task-creator", x: 7, y: 6, w: 5, h: 6 },
+      // Row 7: charts (full width)
+      { i: "charts", x: 0, y: 7, w: 12, h: 8 },
+      // Row 8: Quick links
+      { i: "quick-links", x: 0, y: 8, w: 12, h: 4 },
     ],
     widgets: {
       today: {
@@ -353,6 +358,38 @@ function buildSampleHome(): Dashboard {
             'FROM "日報"\n' +
             'SORT file.mtime DESC\n' +
             'LIMIT 7',
+        },
+      },
+      "ai-search": {
+        type: "ai-search",
+        title: "✨ AI Search (Claudeで聞く)",
+        settings: {
+          model: "claude-haiku-4-5-20251001",
+          topK: 30,
+          excerptChars: 300,
+          folders: [],
+        },
+      },
+      "task-creator": {
+        type: "task-creator",
+        title: "➕ タスク追加",
+        settings: {
+          folder: "タスク/詳細",
+          defaultPjt: "",
+          defaultPriority: "Medium",
+          defaultStatus: "未着手",
+          defaultLabel: "作成",
+          defaultDuration: "2h",
+        },
+      },
+      charts: {
+        type: "charts",
+        title: "📊 進捗グラフ",
+        settings: {
+          charts: ["tasks-completed-30d", "notes-created-30d", "tasks-by-pjt", "tasks-by-status"],
+          folder: "タスク/詳細",
+          statusField: "status",
+          pjtField: "PJT",
         },
       },
       "quick-links": {

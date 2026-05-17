@@ -8,9 +8,14 @@ import { googleCalendarWidget } from "./GoogleCalendarWidget";
 import { todayWidget } from "./TodayWidget";
 import { kanbanWidget } from "./KanbanWidget";
 import { ganttWidget } from "./GanttWidget";
+import { taskCreatorWidget } from "./TaskCreatorWidget";
+import { chartsWidget } from "./ChartsWidget";
+import { aiSearchWidget } from "./AISearchWidget";
 
 export function registerBuiltinWidgets(): void {
   widgetRegistry.register(todayWidget);
+  widgetRegistry.register(taskCreatorWidget);
+  widgetRegistry.register(aiSearchWidget);
   widgetRegistry.register(markdownWidget);
   widgetRegistry.register(noteEmbedWidget);
   widgetRegistry.register(dataviewWidget);
@@ -19,6 +24,7 @@ export function registerBuiltinWidgets(): void {
   widgetRegistry.register(googleCalendarWidget);
   widgetRegistry.register(kanbanWidget);
   widgetRegistry.register(ganttWidget);
+  widgetRegistry.register(chartsWidget);
 }
 
 export { widgetRegistry };
