@@ -160,34 +160,19 @@ function buildSampleHome(): Dashboard {
     version: 1,
     title: "ホーム",
     layout: [
-      // Row 1: Today (4) + 3 KPI (8)
-      { i: "today", x: 0, y: 0, w: 4, h: 4 },
-      { i: "kpi-overdue", x: 4, y: 0, w: 2, h: 2 },
-      { i: "kpi-today", x: 6, y: 0, w: 2, h: 2 },
-      { i: "kpi-week", x: 8, y: 0, w: 2, h: 2 },
-      { i: "kpi-meetings", x: 10, y: 0, w: 2, h: 2 },
-      { i: "kpi-tasks", x: 4, y: 1, w: 4, h: 2 },
-      { i: "kpi-knowledge", x: 8, y: 1, w: 4, h: 2 },
-      // Row 2: Kanban (full width) — drag tasks across columns
-      { i: "kanban", x: 0, y: 2, w: 12, h: 8 },
-      // Row 2b: Gantt chart (full width)
-      { i: "gantt", x: 0, y: 3, w: 12, h: 8 },
-      // Row 3: Today's schedule + today/overdue tasks
-      { i: "today-cal", x: 0, y: 4, w: 6, h: 7 },
-      { i: "tasks-today", x: 6, y: 4, w: 6, h: 7 },
-      // Row 4: This week's deadlines + project status
-      { i: "tasks-week", x: 0, y: 4, w: 6, h: 5 },
-      { i: "tasks-by-pjt", x: 6, y: 4, w: 6, h: 5 },
-      // Row 5: Recent activity
-      { i: "recent-minutes", x: 0, y: 5, w: 6, h: 5 },
-      { i: "recent-daily", x: 6, y: 5, w: 6, h: 5 },
-      // Row 6: AI search + task creator
-      { i: "ai-search", x: 0, y: 6, w: 7, h: 6 },
-      { i: "task-creator", x: 7, y: 6, w: 5, h: 6 },
-      // Row 7: charts (full width)
-      { i: "charts", x: 0, y: 7, w: 12, h: 8 },
-      // Row 8: Quick links
-      { i: "quick-links", x: 0, y: 8, w: 12, h: 4 },
+      { i: "today", x: 0, y: 0, w: 4, h: 2 },
+      { i: "kpi-overdue", x: 4, y: 1, w: 2, h: 2 },
+      { i: "kpi-today", x: 6, y: 2, w: 2, h: 2 },
+      { i: "kpi-week", x: 8, y: 3, w: 2, h: 2 },
+      { i: "kpi-meetings", x: 10, y: 4, w: 2, h: 2 },
+      { i: "gantt", x: 0, y: 5, w: 12, h: 6 },
+      { i: "kanban", x: 0, y: 6, w: 12, h: 6 },
+      { i: "today-cal", x: 0, y: 7, w: 4, h: 7 },
+      { i: "tasks-today", x: 6, y: 8, w: 4, h: 7 },
+      { i: "tasks-week", x: 0, y: 9, w: 4, h: 7 },
+      { i: "tasks-by-pjt", x: 6, y: 10, w: 6, h: 5 },
+      { i: "recent-minutes", x: 0, y: 11, w: 6, h: 5 },
+      { i: "quick-links", x: 0, y: 12, w: 12, h: 4 },
     ],
     widgets: {
       today: {
@@ -241,31 +226,13 @@ function buildSampleHome(): Dashboard {
           unit: "件",
         },
       },
-      "kpi-tasks": {
-        type: "counter",
-        title: "未完了タスク総数",
-        settings: {
-          query: 'LIST FROM "タスク/詳細" WHERE status != "完了"',
-          label: "📝 未完了タスク",
-          unit: "件",
-        },
-      },
-      "kpi-knowledge": {
-        type: "counter",
-        title: "ナレッジ件数",
-        settings: {
-          query: 'LIST FROM "ナレッジ" WHERE !contains(file.name, "ナレッジマップ")',
-          label: "📚 ナレッジ",
-          unit: "件",
-        },
-      },
       "today-cal": {
         type: "gcal",
         title: "今週の予定",
         settings: {
           calendarId: "primary",
           windowDays: 7,
-          maxEvents: 50,
+          maxEvents: 20,
         },
       },
       "tasks-today": {
@@ -277,37 +244,8 @@ function buildSampleHome(): Dashboard {
             'TABLE PJT, 期限 AS "期限", 優先度 AS "優先", status AS "状態"\n' +
             'FROM "タスク/詳細"\n' +
             'WHERE status != "完了" AND 期限 != null AND 期限 != "なし" AND date(期限) <= date(today)\n' +
-            'SORT date(期限) ASC',
-        },
-      },
-      kanban: {
-        type: "kanban",
-        title: "📋 Kanban (ドラッグで状態変更)",
-        settings: {
-          folder: "タスク/詳細",
-          statusField: "status",
-          columns: ["未着手", "作業中", "レビュー待ち", "完了"],
-          showFields: ["PJT", "期限", "優先度"],
-          hideCompleted: false,
-        },
-      },
-      gantt: {
-        type: "gantt",
-        title: "📈 Gantt (Markwhen)",
-        settings: {
-          source: "markwhen",
-          markwhenPath: "タスク/ガント.mw",
-          folder: "タスク/詳細",
-          deadlineField: "期限",
-          startField: "開始",
-          durationField: "工数",
-          statusField: "status",
-          groupByField: "PJT",
-          windowDaysBack: 180,
-          windowDaysForward: 365,
-          rowHeight: 24,
-          dayWidth: 24,
-          hideCompleted: false,
+            'SORT date(期限) ASC\n' +
+            'LIMIT 6',
         },
       },
       "tasks-week": {
@@ -348,50 +286,6 @@ function buildSampleHome(): Dashboard {
             'LIMIT 10',
         },
       },
-      "recent-daily": {
-        type: "dataview",
-        title: "📝 最近の日報 (7件)",
-        settings: {
-          mode: "dql",
-          query:
-            'TABLE file.mtime AS "更新"\n' +
-            'FROM "日報"\n' +
-            'SORT file.mtime DESC\n' +
-            'LIMIT 7',
-        },
-      },
-      "ai-search": {
-        type: "ai-search",
-        title: "✨ AI Search (Claudeで聞く)",
-        settings: {
-          model: "claude-haiku-4-5-20251001",
-          topK: 30,
-          excerptChars: 300,
-          folders: [],
-        },
-      },
-      "task-creator": {
-        type: "task-creator",
-        title: "➕ タスク追加",
-        settings: {
-          folder: "タスク/詳細",
-          defaultPjt: "",
-          defaultPriority: "Medium",
-          defaultStatus: "未着手",
-          defaultLabel: "作成",
-          defaultDuration: "2h",
-        },
-      },
-      charts: {
-        type: "charts",
-        title: "📊 進捗グラフ",
-        settings: {
-          charts: ["tasks-completed-30d", "notes-created-30d", "tasks-by-pjt", "tasks-by-status"],
-          folder: "タスク/詳細",
-          statusField: "status",
-          pjtField: "PJT",
-        },
-      },
       "quick-links": {
         type: "markdown",
         title: "🔗 クイックリンク / メモ",
@@ -407,6 +301,34 @@ function buildSampleHome(): Dashboard {
             "- ↻ で個別ウィジェット再読み込み\n" +
             "- タイトル（上の「ホーム」）クリックでリネーム\n\n" +
             "_このメモは自由に書き換えてOK_",
+        },
+      },
+      kanban: {
+        type: "kanban",
+        title: "Kanban (タスク)",
+        settings: {
+          folder: "タスク/詳細",
+          statusField: "status",
+          columns: ["未着手", "作業中", "AI移譲", "レビュー待ち", "完了"],
+          showFields: ["PJT", "期限", "優先度"],
+          hideCompleted: false,
+        },
+      },
+      gantt: {
+        type: "gantt",
+        title: "Gantt",
+        settings: {
+          folder: "タスク/詳細",
+          deadlineField: "期限",
+          startField: "開始",
+          durationField: "工数",
+          statusField: "status",
+          groupByField: "PJT",
+          windowDaysBack: 180,
+          windowDaysForward: 365,
+          rowHeight: 26,
+          dayWidth: 24,
+          hideCompleted: false,
         },
       },
     },
