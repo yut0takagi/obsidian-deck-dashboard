@@ -163,6 +163,10 @@ export class DashboardView extends TextFileView {
     titleEl.title = widget.type;
 
     const controls = head.createDiv({ cls: "nd-widget-controls" });
+    const refreshBtn = controls.createEl("button", { text: "↻", attr: { title: "再読み込み" } });
+    refreshBtn.addEventListener("click", () => {
+      this.render();
+    });
     const editBtn = controls.createEl("button", { text: "⚙", attr: { title: "編集" } });
     editBtn.addEventListener("click", () => {
       new EditWidgetModal(
