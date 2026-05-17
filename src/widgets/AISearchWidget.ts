@@ -66,11 +66,14 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
     }
 
     const form = el.createDiv({ cls: "nd-ai-form" });
-    const input = form.createEl("input", {
+    const input = form.createEl("textarea", {
       cls: "nd-ai-input",
-      attr: { type: "text", placeholder: "聞きたいことを自然な日本語で… (例: 先週のロリエ案件の議論ポイント)" },
+      attr: {
+        rows: "2",
+        placeholder: "聞きたいことを自然な日本語で… (例: 先週のロリエ案件の議論ポイント) — ⌘+Enter で送信",
+      },
     });
-    const goBtn = form.createEl("button", { text: "✨ 検索", cls: "mod-cta" });
+    const goBtn = form.createEl("button", { text: "✨ 検索 (⌘+↵)", cls: "mod-cta" });
 
     const meta = el.createDiv({ cls: "nd-ai-meta nd-muted" });
     const result = el.createDiv({ cls: "nd-ai-result" });
@@ -142,7 +145,10 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
 
     goBtn.addEventListener("click", submit);
     input.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") submit();
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        submit();
+      }
     });
 
     setTimeout(() => input.focus(), 50);

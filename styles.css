@@ -944,6 +944,7 @@
 .nd-ai-form {
   display: flex;
   gap: 6px;
+  align-items: stretch;
 }
 
 .nd-ai-input {
@@ -953,6 +954,12 @@
   border-radius: 4px;
   background: var(--background-primary);
   color: var(--text-normal);
+  font-family: inherit;
+  font-size: inherit;
+  resize: vertical;
+  min-height: 2.4em;
+  max-height: 12em;
+  line-height: 1.4;
 }
 
 .nd-ai-input:focus {
