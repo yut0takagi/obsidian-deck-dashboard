@@ -1,6 +1,7 @@
 import { Setting } from "obsidian";
 import type { WidgetDefinition } from "./types";
 import { getDataviewApi } from "../adapters/dataview";
+import { wireInternalLinks } from "./linkHandler";
 
 interface Settings {
   query: string;
@@ -29,6 +30,7 @@ export const dataviewWidget: WidgetDefinition<Settings> = {
       } else {
         await dv.executeJs(settings.query, el, ctx.parent, ctx.sourcePath);
       }
+      wireInternalLinks(el, ctx.app, ctx.sourcePath);
     } catch (e) {
       const pre = el.createEl("pre", { cls: "nd-error" });
       pre.setText(`Dataview error: ${(e as Error).message}`);

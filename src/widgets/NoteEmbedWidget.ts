@@ -1,5 +1,6 @@
 import { MarkdownRenderer, Setting, TFile } from "obsidian";
 import type { WidgetDefinition } from "./types";
+import { wireInternalLinks } from "./linkHandler";
 
 interface Settings {
   notePath: string;
@@ -33,6 +34,7 @@ export const noteEmbedWidget: WidgetDefinition<Settings> = {
     const raw = await ctx.app.vault.cachedRead(file);
     const lines = raw.split("\n").slice(0, settings.maxLines).join("\n");
     await MarkdownRenderer.render(ctx.app, lines, body, file.path, ctx.parent);
+    wireInternalLinks(body, ctx.app, file.path);
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)

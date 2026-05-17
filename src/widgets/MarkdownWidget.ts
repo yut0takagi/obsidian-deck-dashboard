@@ -1,5 +1,6 @@
 import { MarkdownRenderer, Setting } from "obsidian";
 import type { WidgetDefinition } from "./types";
+import { wireInternalLinks } from "./linkHandler";
 
 interface Settings {
   content: string;
@@ -16,6 +17,7 @@ export const markdownWidget: WidgetDefinition<Settings> = {
     el.empty();
     el.addClass("nd-widget-markdown");
     await MarkdownRenderer.render(ctx.app, settings.content, el, ctx.sourcePath, ctx.parent);
+    wireInternalLinks(el, ctx.app, ctx.sourcePath);
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)

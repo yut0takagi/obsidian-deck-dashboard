@@ -2,6 +2,7 @@ import { MarkdownRenderer, Notice, Setting, TFile } from "obsidian";
 import type { WidgetDefinition, WidgetContext } from "./types";
 import { chat } from "../adapters/anthropic";
 import { runClaudeP } from "../adapters/claudeCode";
+import { wireInternalLinks } from "./linkHandler";
 
 type Backend = "claude-code" | "api";
 
@@ -123,6 +124,7 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
         result.empty();
         const md = result.createDiv({ cls: "nd-ai-md" });
         await MarkdownRenderer.render(ctx.app, answerMd, md, ctx.sourcePath, ctx.parent);
+        wireInternalLinks(md, ctx.app, ctx.sourcePath);
       } catch (e) {
         meta.empty();
         result.empty();
