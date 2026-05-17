@@ -4,6 +4,7 @@ import { noteEmbedWidget } from "./NoteEmbedWidget";
 import { dataviewWidget } from "./DataviewWidget";
 import { counterWidget } from "./CounterWidget";
 import { calendarWidget } from "./CalendarWidget";
+import { googleCalendarWidget } from "./GoogleCalendarWidget";
 
 export function registerBuiltinWidgets(): void {
   widgetRegistry.register(markdownWidget);
@@ -11,6 +12,7 @@ export function registerBuiltinWidgets(): void {
   widgetRegistry.register(dataviewWidget);
   widgetRegistry.register(counterWidget);
   widgetRegistry.register(calendarWidget);
+  widgetRegistry.register(googleCalendarWidget);
 }
 
 export { widgetRegistry };

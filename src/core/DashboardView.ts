@@ -1,4 +1,4 @@
-import { Notice, TextFileView, WorkspaceLeaf } from "obsidian";
+import { Notice, Plugin, TextFileView, WorkspaceLeaf } from "obsidian";
 import { VIEW_TYPE_DASHBOARD } from "./constants";
 import {
   parseDashboard,
@@ -13,9 +13,11 @@ import { AddWidgetModal, EditWidgetModal } from "../ui/AddWidgetModal";
 export class DashboardView extends TextFileView {
   private dashboard: Dashboard = createDefaultDashboard("Untitled");
   private editMode = false;
+  private plugin: Plugin;
 
-  constructor(leaf: WorkspaceLeaf) {
+  constructor(leaf: WorkspaceLeaf, plugin: Plugin) {
     super(leaf);
+    this.plugin = plugin;
   }
 
   getViewType(): string {
@@ -202,7 +204,12 @@ export class DashboardView extends TextFileView {
     }
     const sourcePath = this.file?.path ?? "";
     Promise.resolve(
-      def.render(body, widget.settings, { app: this.app, parent: this, sourcePath })
+      def.render(body, widget.settings, {
+        app: this.app,
+        plugin: this.plugin,
+        parent: this,
+        sourcePath,
+      })
     ).catch((e) => {
       body.createEl("pre", { cls: "nd-error", text: `Render error: ${(e as Error).message}` });
     });

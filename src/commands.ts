@@ -11,6 +11,9 @@ import {
 } from "./core/DashboardModel";
 import type { Dashboard } from "./core/types";
 import { DashboardView } from "./core/DashboardView";
+import { GoogleOAuth } from "./auth/googleOAuth";
+import { GoogleAuthModal } from "./ui/GoogleAuthModal";
+import { listCalendars } from "./adapters/googleCalendar";
 
 export function registerCommands(plugin: Plugin): void {
   plugin.addCommand({
@@ -48,6 +51,42 @@ export function registerCommands(plugin: Plugin): void {
       if (checking) return !!view;
       view?.toggleEditMode();
       return true;
+    },
+  });
+
+  plugin.addCommand({
+    id: "google-auth",
+    name: "Google Calendar: Authenticate / setup credentials",
+    callback: () => {
+      new GoogleAuthModal(plugin.app, new GoogleOAuth(plugin)).open();
+    },
+  });
+
+  plugin.addCommand({
+    id: "google-signout",
+    name: "Google Calendar: Sign out",
+    callback: async () => {
+      await new GoogleOAuth(plugin).clearTokens();
+      new Notice("Google Calendar からサインアウトしました");
+    },
+  });
+
+  plugin.addCommand({
+    id: "google-list-calendars",
+    name: "Google Calendar: List calendars (for calendarId lookup)",
+    callback: async () => {
+      try {
+        const oauth = new GoogleOAuth(plugin);
+        const cals = await listCalendars(oauth);
+        const lines = cals.map(
+          (c) => `${c.primary ? "★" : "  "} ${c.summary}\n   → ${c.id}`
+        );
+        new Notice(`カレンダー一覧 (${cals.length}件) — コンソールに出力`);
+        // eslint-disable-next-line no-console
+        console.log("[Notion Dashboard] Google Calendars:\n" + lines.join("\n\n"));
+      } catch (e) {
+        new Notice(`取得失敗: ${(e as Error).message}`);
+      }
     },
   });
 }
@@ -171,12 +210,12 @@ function buildSampleHome(): Dashboard {
         },
       },
       "today-cal": {
-        type: "calendar",
+        type: "gcal",
         title: "今週の予定",
         settings: {
-          icalUrl: "",
+          calendarId: "primary",
           windowDays: 7,
-          maxEvents: 30,
+          maxEvents: 50,
         },
       },
       "tasks-today": {

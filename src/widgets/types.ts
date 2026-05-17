@@ -1,7 +1,8 @@
-import type { App, Component } from "obsidian";
+import type { App, Component, Plugin } from "obsidian";
 
 export interface WidgetContext {
   app: App;
+  plugin: Plugin;
   parent: Component;
   sourcePath: string;
 }
