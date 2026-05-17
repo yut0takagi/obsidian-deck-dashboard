@@ -166,14 +166,13 @@ function buildSampleHome(): Dashboard {
       { i: "kpi-today", x: 6, y: 0, w: 2, h: 2 },
       { i: "kpi-week", x: 8, y: 0, w: 2, h: 2 },
       { i: "kpi-meetings", x: 10, y: 0, w: 2, h: 2 },
-      // Row 1b: 2 quick-status under KPI
       { i: "kpi-tasks", x: 4, y: 1, w: 4, h: 2 },
       { i: "kpi-knowledge", x: 8, y: 1, w: 4, h: 2 },
-      // Row 2: Today's schedule + today/overdue tasks
-      { i: "today-cal", x: 0, y: 2, w: 6, h: 7 },
-      { i: "tasks-today", x: 6, y: 2, w: 6, h: 7 },
-      // Row 3: Kanban (full width) — drag tasks across columns
-      { i: "kanban", x: 0, y: 3, w: 12, h: 8 },
+      // Row 2: Kanban (full width) — drag tasks across columns
+      { i: "kanban", x: 0, y: 2, w: 12, h: 8 },
+      // Row 3: Today's schedule + today/overdue tasks
+      { i: "today-cal", x: 0, y: 3, w: 6, h: 7 },
+      { i: "tasks-today", x: 6, y: 3, w: 6, h: 7 },
       // Row 4: This week's deadlines + project status
       { i: "tasks-week", x: 0, y: 4, w: 6, h: 5 },
       { i: "tasks-by-pjt", x: 6, y: 4, w: 6, h: 5 },

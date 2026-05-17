@@ -58,6 +58,36 @@
   border-style: dashed;
 }
 
+.nd-widget-draggable {
+  /* whole widget acts as drag source in edit mode */
+}
+
+.nd-widget-dragging {
+  opacity: 0.45;
+  transform: rotate(0.6deg);
+}
+
+.nd-widget-drop-before {
+  box-shadow: -4px 0 0 0 var(--interactive-accent), 0 -4px 0 0 var(--interactive-accent);
+}
+
+.nd-widget-drop-after {
+  box-shadow: 4px 0 0 0 var(--interactive-accent), 0 4px 0 0 var(--interactive-accent);
+}
+
+.nd-drag-handle {
+  cursor: grab;
+  user-select: none;
+  color: var(--text-muted);
+  font-weight: 700;
+  padding-right: 4px;
+  font-size: 0.85em;
+}
+
+.nd-drag-handle:active {
+  cursor: grabbing;
+}
+
 .nd-widget-head {
   display: flex;
   align-items: center;

@@ -154,6 +154,7 @@ export class DashboardView extends TextFileView {
 
   private renderWidget(grid: HTMLElement, layout: LayoutItem, widget: WidgetInstance): void {
     const wrap = grid.createDiv({ cls: "nd-widget" });
+    wrap.dataset.layoutId = layout.i;
     wrap.style.gridColumn = `span ${Math.max(1, Math.min(12, layout.w))}`;
     // Fixed height — body scrolls internally when content overflows.
     // h is in grid units (80px each).
@@ -161,7 +162,54 @@ export class DashboardView extends TextFileView {
     wrap.style.height = px;
     wrap.style.maxHeight = px;
 
+    // Drag-to-reorder (only when edit mode is on, to avoid accidental moves)
+    if (this.editMode) {
+      wrap.setAttr("draggable", "true");
+      wrap.addClass("nd-widget-draggable");
+      wrap.addEventListener("dragstart", (e) => {
+        e.dataTransfer?.setData("application/x-nd-widget-id", layout.i);
+        if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+        wrap.addClass("nd-widget-dragging");
+      });
+      wrap.addEventListener("dragend", () => {
+        wrap.removeClass("nd-widget-dragging");
+        // clean any drop-target classes lingering
+        grid.querySelectorAll(".nd-widget-drop-before, .nd-widget-drop-after").forEach((el) => {
+          el.removeClass("nd-widget-drop-before");
+          el.removeClass("nd-widget-drop-after");
+        });
+      });
+      wrap.addEventListener("dragover", (e) => {
+        const types = e.dataTransfer?.types;
+        if (!types || !Array.from(types).includes("application/x-nd-widget-id")) return;
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+        // visual hint: top half = before, bottom half = after
+        const rect = wrap.getBoundingClientRect();
+        const before = e.clientY < rect.top + rect.height / 2;
+        wrap.removeClass(before ? "nd-widget-drop-after" : "nd-widget-drop-before");
+        wrap.addClass(before ? "nd-widget-drop-before" : "nd-widget-drop-after");
+      });
+      wrap.addEventListener("dragleave", () => {
+        wrap.removeClass("nd-widget-drop-before");
+        wrap.removeClass("nd-widget-drop-after");
+      });
+      wrap.addEventListener("drop", (e) => {
+        const sourceId = e.dataTransfer?.getData("application/x-nd-widget-id");
+        if (!sourceId || sourceId === layout.i) return;
+        e.preventDefault();
+        const rect = wrap.getBoundingClientRect();
+        const before = e.clientY < rect.top + rect.height / 2;
+        this.reorderWidget(sourceId, layout.i, before);
+        wrap.removeClass("nd-widget-drop-before");
+        wrap.removeClass("nd-widget-drop-after");
+      });
+    }
+
     const head = wrap.createDiv({ cls: "nd-widget-head" });
+    if (this.editMode) {
+      head.createSpan({ cls: "nd-drag-handle", text: "⋮⋮", attr: { title: "ドラッグして並び替え" } });
+    }
     const titleEl = head.createEl("div", {
       cls: "nd-widget-title",
       text: widget.title ?? widgetRegistry.get(widget.type)?.label ?? widget.type,
@@ -236,6 +284,34 @@ export class DashboardView extends TextFileView {
     const ay = a.y;
     a.y = b.y;
     b.y = ay;
+    this.persist();
+    this.render();
+  }
+
+  /**
+   * Reorder via D&D: move source widget to be before (or after) target widget,
+   * then re-flow y coords so widgets stay in a sensible row order.
+   */
+  private reorderWidget(sourceId: string, targetId: string, insertBefore: boolean): void {
+    if (sourceId === targetId) return;
+    const ordered = this.sortedLayout();
+    const sourceIdx = ordered.findIndex((l) => l.i === sourceId);
+    if (sourceIdx < 0) return;
+    const [moved] = ordered.splice(sourceIdx, 1);
+    let targetIdx = ordered.findIndex((l) => l.i === targetId);
+    if (targetIdx < 0) {
+      ordered.push(moved);
+    } else {
+      if (!insertBefore) targetIdx += 1;
+      ordered.splice(targetIdx, 0, moved);
+    }
+    // Re-flow y coords. Items get sequential y (1 per item) — CSS Grid will pack
+    // them visually using x and span. This keeps relative order without trying
+    // to pack rows of multiple items at the same y (which would require a true
+    // 2D packer).
+    ordered.forEach((l, i) => {
+      l.y = i;
+    });
     this.persist();
     this.render();
   }
