@@ -12,8 +12,15 @@ interface Settings {
   model: string;
   topK: number;
   excerptChars: number;
-  folders: string[]; // empty = whole vault
+  folders: string[]; // empty = whole vault (minus excludes)
+  excludeFolders: string[]; // always skipped, even when folders is empty
 }
+
+// Always skipped regardless of user settings (system/junk folders).
+const ALWAYS_EXCLUDED = [".obsidian", ".trash", ".claude", "node_modules"];
+
+// Sensible vault defaults — auto-generated/binary-heavy/temp folders.
+const DEFAULT_EXCLUDES = ["ログ", "アーカイブ", "添付", "inbox/temp"];
 
 interface PluginData {
   anthropic_api_key?: string;
@@ -31,6 +38,7 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
     topK: 30,
     excerptChars: 300,
     folders: [],
+    excludeFolders: [...DEFAULT_EXCLUDES],
   }),
   async render(el, settings, ctx) {
     el.empty();
@@ -182,7 +190,7 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
       );
     new Setting(container)
       .setName("検索対象フォルダ (カンマ区切り)")
-      .setDesc("空 = vault全体。例: 議事録, ナレッジ, 日報")
+      .setDesc("空 = vault全体（除外フォルダを除く）。例: 議事録, ナレッジ, 日報")
       .addText((t) => {
         t.setValue(settings.folders.join(", "));
         t.inputEl.style.width = "100%";
@@ -190,6 +198,22 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
           onChange({
             ...settings,
             folders: v.split(",").map((s) => s.trim()).filter(Boolean),
+          })
+        );
+      });
+    new Setting(container)
+      .setName("除外フォルダ (カンマ区切り)")
+      .setDesc(
+        `常に検索対象から外す。デフォルト: ${DEFAULT_EXCLUDES.join(", ")}。` +
+        `${ALWAYS_EXCLUDED.join(", ")} は強制除外`
+      )
+      .addText((t) => {
+        t.setValue((settings.excludeFolders ?? DEFAULT_EXCLUDES).join(", "));
+        t.inputEl.style.width = "100%";
+        t.onChange((v) =>
+          onChange({
+            ...settings,
+            excludeFolders: v.split(",").map((s) => s.trim()).filter(Boolean),
           })
         );
       });
@@ -211,9 +235,12 @@ async function selectCandidates(
   const files: TFile[] = (ctx.app.vault as any).getMarkdownFiles();
   const candidates: Candidate[] = [];
   // For perf: only sample up to 2000 files for content scoring
+  const userExcludes = settings.excludeFolders ?? DEFAULT_EXCLUDES;
+  const excludes = [...ALWAYS_EXCLUDED, ...userExcludes];
   const filtered = files.filter((f) => {
+    if (excludes.some((ex) => f.path === ex || f.path.startsWith(ex + "/"))) return false;
     if (settings.folders.length === 0) return true;
-    return settings.folders.some((fld) => f.path.startsWith(fld + "/"));
+    return settings.folders.some((fld) => f.path === fld || f.path.startsWith(fld + "/"));
   });
 
   // Cheap pass: score by filename + tag-ish path matches first
