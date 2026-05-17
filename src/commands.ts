@@ -3,15 +3,21 @@ import {
   DASHBOARD_EXTENSION,
   DEFAULT_DASHBOARD_FOLDER,
   DEFAULT_HOME_FILENAME,
+  VIEW_TYPE_DASHBOARD,
 } from "./core/constants";
-import { createDefaultDashboard, serializeDashboard } from "./core/DashboardModel";
+import {
+  createDefaultDashboard,
+  serializeDashboard,
+} from "./core/DashboardModel";
+import type { Dashboard } from "./core/types";
+import { DashboardView } from "./core/DashboardView";
 
 export function registerCommands(plugin: Plugin): void {
   plugin.addCommand({
     id: "create-new",
     name: "Create new dashboard",
     callback: async () => {
-      await createNewDashboard(plugin, "Untitled");
+      await createNewDashboard(plugin, "Untitled", createDefaultDashboard("Untitled"));
     },
   });
 
@@ -22,16 +28,50 @@ export function registerCommands(plugin: Plugin): void {
       await openHomeDashboard(plugin);
     },
   });
+
+  plugin.addCommand({
+    id: "add-widget",
+    name: "Add widget to active dashboard",
+    checkCallback: (checking) => {
+      const view = activeDashboardView(plugin);
+      if (checking) return !!view;
+      view?.openAddWidget();
+      return true;
+    },
+  });
+
+  plugin.addCommand({
+    id: "toggle-edit",
+    name: "Toggle dashboard edit mode",
+    checkCallback: (checking) => {
+      const view = activeDashboardView(plugin);
+      if (checking) return !!view;
+      view?.toggleEditMode();
+      return true;
+    },
+  });
 }
 
-async function createNewDashboard(plugin: Plugin, title: string): Promise<TFile> {
+function activeDashboardView(plugin: Plugin): DashboardView | null {
+  const leaf = plugin.app.workspace.getActiveViewOfType(DashboardView as any);
+  return (leaf as DashboardView | null) ?? null;
+}
+
+async function createNewDashboard(
+  plugin: Plugin,
+  baseTitle: string,
+  initial: Dashboard
+): Promise<TFile> {
   const folder = normalizePath(DEFAULT_DASHBOARD_FOLDER);
   if (!plugin.app.vault.getAbstractFileByPath(folder)) {
     await plugin.app.vault.createFolder(folder);
   }
-  const baseName = sanitizeFilename(title);
-  const path = await uniquePath(plugin, `${folder}/${baseName}.${DASHBOARD_EXTENSION}`);
-  const file = await plugin.app.vault.create(path, serializeDashboard(createDefaultDashboard(title)));
+  const baseName = sanitizeFilename(baseTitle);
+  const path = await uniquePath(
+    plugin,
+    `${folder}/${baseName}.${DASHBOARD_EXTENSION}`
+  );
+  const file = await plugin.app.vault.create(path, serializeDashboard(initial));
   await openInDashboardView(plugin, file);
   new Notice(`Dashboard created: ${file.path}`);
   return file;
@@ -47,7 +87,7 @@ async function openHomeDashboard(plugin: Plugin): Promise<void> {
     }
     file = await plugin.app.vault.create(
       homePath,
-      serializeDashboard(createDefaultDashboard(DEFAULT_HOME_FILENAME))
+      serializeDashboard(buildSampleHome())
     );
     new Notice(`Home dashboard created at ${homePath}`);
   }
@@ -74,4 +114,98 @@ async function uniquePath(plugin: Plugin, desired: string): Promise<string> {
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_").trim() || "Untitled";
+}
+
+function buildSampleHome(): Dashboard {
+  return {
+    version: 1,
+    title: "ホーム",
+    layout: [
+      { i: "welcome", x: 0, y: 0, w: 12, h: 4 },
+      { i: "kpi-tasks", x: 0, y: 1, w: 4, h: 3 },
+      { i: "kpi-meetings", x: 4, y: 1, w: 4, h: 3 },
+      { i: "kpi-knowledge", x: 8, y: 1, w: 4, h: 3 },
+      { i: "tasks-today", x: 0, y: 2, w: 6, h: 6 },
+      { i: "recent-minutes", x: 6, y: 2, w: 6, h: 6 },
+      { i: "recent-daily", x: 0, y: 3, w: 12, h: 5 },
+    ],
+    widgets: {
+      welcome: {
+        type: "markdown",
+        title: "ようこそ",
+        settings: {
+          content:
+            "# ようこそ Notion Dashboard へ\n\n" +
+            "このウィジェットは自由に編集できる。⚙アイコンから内容を変更しよう。\n" +
+            "- `+ ウィジェット追加` で新しいウィジェットを足す\n" +
+            "- `✎ 編集モード` で並び替え・幅変更ができる\n" +
+            "- タイトル(上の `ホーム`)をクリックでリネーム",
+        },
+      },
+      "kpi-tasks": {
+        type: "counter",
+        title: "未完了タスク",
+        settings: {
+          query: 'LIST FROM "タスク/詳細" WHERE status != "完了"',
+          label: "未完了タスク",
+          unit: "件",
+        },
+      },
+      "kpi-meetings": {
+        type: "counter",
+        title: "今月の議事録",
+        settings: {
+          query: 'LIST FROM "議事録" WHERE file.mday > date(today) - dur(30 days)',
+          label: "30日以内の議事録",
+          unit: "件",
+        },
+      },
+      "kpi-knowledge": {
+        type: "counter",
+        title: "ナレッジ件数",
+        settings: {
+          query: 'LIST FROM "ナレッジ" WHERE !contains(file.name, "ナレッジマップ")',
+          label: "ナレッジ総数",
+          unit: "件",
+        },
+      },
+      "tasks-today": {
+        type: "dataview",
+        title: "今週のタスク",
+        settings: {
+          mode: "dql",
+          query:
+            'TABLE PJT, 期限, 優先度, status\n' +
+            'FROM "タスク/詳細"\n' +
+            'WHERE status != "完了" AND 期限 != null AND 期限 != "なし"\n' +
+            'SORT 期限 ASC\n' +
+            'LIMIT 12',
+        },
+      },
+      "recent-minutes": {
+        type: "dataview",
+        title: "最近の議事録",
+        settings: {
+          mode: "dql",
+          query:
+            'TABLE file.mtime AS "更新"\n' +
+            'FROM "議事録"\n' +
+            'SORT file.mtime DESC\n' +
+            'LIMIT 10',
+        },
+      },
+      "recent-daily": {
+        type: "dataview",
+        title: "最近の日報",
+        settings: {
+          mode: "dql",
+          query:
+            'TABLE file.mtime AS "更新"\n' +
+            'FROM "日報"\n' +
+            'SORT file.mtime DESC\n' +
+            'LIMIT 7',
+        },
+      },
+    },
+  };
 }

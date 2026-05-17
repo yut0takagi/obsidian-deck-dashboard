@@ -1,4 +1,4 @@
-import { TextFileView, WorkspaceLeaf } from "obsidian";
+import { Notice, TextFileView, WorkspaceLeaf } from "obsidian";
 import { VIEW_TYPE_DASHBOARD } from "./constants";
 import {
   parseDashboard,
@@ -6,10 +6,13 @@ import {
   createDefaultDashboard,
   DashboardParseError,
 } from "./DashboardModel";
-import type { Dashboard } from "./types";
+import type { Dashboard, LayoutItem, WidgetInstance } from "./types";
+import { widgetRegistry } from "../widgets";
+import { AddWidgetModal, EditWidgetModal } from "../ui/AddWidgetModal";
 
 export class DashboardView extends TextFileView {
   private dashboard: Dashboard = createDefaultDashboard("Untitled");
+  private editMode = false;
 
   constructor(leaf: WorkspaceLeaf) {
     super(leaf);
@@ -56,21 +59,164 @@ export class DashboardView extends TextFileView {
     this.containerEl.children[1].empty();
   }
 
+  toggleEditMode(): void {
+    this.editMode = !this.editMode;
+    this.render();
+  }
+
+  openAddWidget(): void {
+    new AddWidgetModal(this.app, (widget) => {
+      this.addWidget(widget);
+    }).open();
+  }
+
+  private addWidget(widget: WidgetInstance): void {
+    const id = `w_${Date.now().toString(36)}_${Math.floor(Math.random() * 1000)}`;
+    this.dashboard.widgets[id] = widget;
+    const nextY = this.dashboard.layout.reduce((max, l) => Math.max(max, l.y + l.h), 0);
+    this.dashboard.layout.push({ i: id, x: 0, y: nextY, w: 12, h: 4 });
+    this.persist();
+    this.render();
+  }
+
+  private updateWidget(id: string, next: WidgetInstance): void {
+    this.dashboard.widgets[id] = next;
+    this.persist();
+    this.render();
+  }
+
+  private deleteWidget(id: string): void {
+    delete this.dashboard.widgets[id];
+    this.dashboard.layout = this.dashboard.layout.filter((l) => l.i !== id);
+    this.persist();
+    this.render();
+  }
+
+  private persist(): void {
+    this.requestSave();
+  }
+
   private render(): void {
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
     container.addClass("notion-dashboard-view");
 
-    const header = container.createDiv({ cls: "notion-dashboard-header" });
-    header.createEl("h1", { text: this.dashboard.title });
+    const header = container.createDiv({ cls: "nd-header" });
+    const titleEl = header.createEl("h1", { cls: "nd-title", text: this.dashboard.title });
+    titleEl.contentEditable = "true";
+    titleEl.addEventListener("blur", () => {
+      const next = (titleEl.textContent ?? "").trim() || "Untitled";
+      if (next !== this.dashboard.title) {
+        this.dashboard.title = next;
+        this.persist();
+      }
+    });
+    titleEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        titleEl.blur();
+      }
+    });
 
-    const body = container.createDiv({ cls: "notion-dashboard-body" });
-    if (Object.keys(this.dashboard.widgets).length === 0) {
-      body.createEl("p", {
-        cls: "notion-dashboard-empty",
-        text: "No widgets yet. Use the command palette → \"Dashboard: Add widget\" (coming in Phase 2).",
+    const toolbar = header.createDiv({ cls: "nd-toolbar" });
+    const addBtn = toolbar.createEl("button", { text: "+ ウィジェット追加", cls: "mod-cta" });
+    addBtn.addEventListener("click", () => this.openAddWidget());
+
+    const editBtn = toolbar.createEl("button", {
+      text: this.editMode ? "✓ 閲覧モードへ" : "✎ 編集モード",
+    });
+    editBtn.addEventListener("click", () => this.toggleEditMode());
+
+    const grid = container.createDiv({ cls: "nd-grid" });
+    if (this.editMode) grid.addClass("nd-edit");
+
+    const items = this.sortedLayout();
+    if (items.length === 0) {
+      grid.createEl("p", {
+        cls: "nd-empty",
+        text: "ウィジェットがありません。「+ ウィジェット追加」から最初のひとつを追加してください。",
+      });
+      return;
+    }
+
+    for (const item of items) {
+      const widget = this.dashboard.widgets[item.i];
+      if (!widget) continue;
+      this.renderWidget(grid, item, widget);
+    }
+  }
+
+  private sortedLayout(): LayoutItem[] {
+    return [...this.dashboard.layout].sort((a, b) => a.y - b.y || a.x - b.x);
+  }
+
+  private renderWidget(grid: HTMLElement, layout: LayoutItem, widget: WidgetInstance): void {
+    const wrap = grid.createDiv({ cls: "nd-widget" });
+    wrap.style.gridColumn = `span ${Math.max(1, Math.min(12, layout.w))}`;
+    wrap.style.minHeight = `${Math.max(2, layout.h) * 60}px`;
+
+    const head = wrap.createDiv({ cls: "nd-widget-head" });
+    const titleEl = head.createEl("div", {
+      cls: "nd-widget-title",
+      text: widget.title ?? widgetRegistry.get(widget.type)?.label ?? widget.type,
+    });
+    titleEl.title = widget.type;
+
+    const controls = head.createDiv({ cls: "nd-widget-controls" });
+    const editBtn = controls.createEl("button", { text: "⚙", attr: { title: "編集" } });
+    editBtn.addEventListener("click", () => {
+      new EditWidgetModal(
+        this.app,
+        widget,
+        (next) => this.updateWidget(layout.i, next),
+        () => this.deleteWidget(layout.i)
+      ).open();
+    });
+
+    if (this.editMode) {
+      const widthBtn = controls.createEl("button", { text: "↔", attr: { title: "幅変更" } });
+      widthBtn.addEventListener("click", () => {
+        layout.w = layout.w >= 12 ? 4 : layout.w + 2;
+        this.persist();
+        this.render();
+      });
+      const upBtn = controls.createEl("button", { text: "↑", attr: { title: "上へ" } });
+      upBtn.addEventListener("click", () => {
+        this.moveWidget(layout.i, -1);
+      });
+      const downBtn = controls.createEl("button", { text: "↓", attr: { title: "下へ" } });
+      downBtn.addEventListener("click", () => {
+        this.moveWidget(layout.i, +1);
       });
     }
+
+    const body = wrap.createDiv({ cls: "nd-widget-body" });
+    const def = widgetRegistry.get(widget.type);
+    if (!def) {
+      body.createEl("p", { cls: "nd-empty", text: `未対応のウィジェット: ${widget.type}` });
+      return;
+    }
+    const sourcePath = this.file?.path ?? "";
+    Promise.resolve(
+      def.render(body, widget.settings, { app: this.app, parent: this, sourcePath })
+    ).catch((e) => {
+      body.createEl("pre", { cls: "nd-error", text: `Render error: ${(e as Error).message}` });
+    });
+  }
+
+  private moveWidget(id: string, delta: number): void {
+    const items = this.sortedLayout();
+    const idx = items.findIndex((l) => l.i === id);
+    if (idx < 0) return;
+    const target = idx + delta;
+    if (target < 0 || target >= items.length) return;
+    const a = items[idx];
+    const b = items[target];
+    const ay = a.y;
+    a.y = b.y;
+    b.y = ay;
+    this.persist();
+    this.render();
   }
 
   private renderError(message: string): void {
@@ -78,5 +224,12 @@ export class DashboardView extends TextFileView {
     container.empty();
     container.createEl("h2", { text: "Failed to load dashboard" });
     container.createEl("pre", { text: message });
+    const retryBtn = container.createEl("button", { text: "デフォルトで再生成" });
+    retryBtn.addEventListener("click", () => {
+      this.dashboard = createDefaultDashboard("Untitled");
+      this.persist();
+      this.render();
+      new Notice("Dashboard reset to default");
+    });
   }
 }

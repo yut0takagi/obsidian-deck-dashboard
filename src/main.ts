@@ -5,9 +5,12 @@ import {
   VIEW_TYPE_DASHBOARD,
 } from "./core/constants";
 import { registerCommands } from "./commands";
+import { registerBuiltinWidgets } from "./widgets";
 
 export default class NotionDashboardPlugin extends Plugin {
   async onload(): Promise<void> {
+    registerBuiltinWidgets();
+
     this.registerView(VIEW_TYPE_DASHBOARD, (leaf) => new DashboardView(leaf));
     this.registerExtensions([DASHBOARD_EXTENSION], VIEW_TYPE_DASHBOARD);
 
