@@ -1,5 +1,6 @@
 import { App, Modal, Notice, Setting, TFile } from "obsidian";
-import { runClaudeStream, StreamEvent } from "../adapters/claudeCodeStream";
+import { runClaudeStream, StreamEvent, ClaudeStreamSession } from "../adapters/claudeCodeStream";
+import { AILogWriter } from "../adapters/aiLogWriter";
 
 const DEFAULT_PROMPT_TEMPLATE = `次のタスクのうち、AIが実行可能な部分をすべて実施してください。
 
@@ -27,10 +28,16 @@ export class AIDelegationModal extends Modal {
   private promptArea: HTMLTextAreaElement | null = null;
   private modeSelect: HTMLSelectElement | null = null;
   private runBtn: HTMLButtonElement | null = null;
-  private cancelBtn: HTMLButtonElement | null = null;
+  private closeBtn: HTMLButtonElement | null = null;
+  private abortBtn: HTMLButtonElement | null = null;
+  private openLogBtn: HTMLButtonElement | null = null;
   private logEl: HTMLElement | null = null;
   private statusEl: HTMLElement | null = null;
-  private session: ReturnType<typeof runClaudeStream> | null = null;
+
+  private session: ClaudeStreamSession | null = null;
+  private writer: AILogWriter | null = null;
+  private uiLive = true;
+  private running = false;
 
   constructor(opts: AIDelegationOptions) {
     super(opts.app);
@@ -38,6 +45,8 @@ export class AIDelegationModal extends Modal {
   }
 
   onOpen(): void {
+    this.modalEl.addClass("nd-ai-delegate-modal-wrap");
+
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("nd-ai-delegate-modal");
@@ -46,7 +55,8 @@ export class AIDelegationModal extends Modal {
     const warn = contentEl.createDiv({ cls: "nd-ai-delegate-warn" });
     warn.setText(
       "⚠️  AIにファイル編集・シェルコマンド実行を許可します。" +
-        " permission-mode に応じて確認なしで実行されるアクションがあります。"
+        " 実行中にモーダルを閉じてもセッションは継続し、" +
+        " ログは ログ/AI移譲/<timestamp>_<task>.md にリアルタイム書き出しされます。"
     );
 
     new Setting(contentEl)
@@ -60,9 +70,7 @@ export class AIDelegationModal extends Modal {
       });
 
     const promptLabel = contentEl.createEl("label", { text: "AIへの指示" });
-    promptLabel.style.fontWeight = "600";
-    promptLabel.style.display = "block";
-    promptLabel.style.marginTop = "12px";
+    promptLabel.addClass("nd-ai-delegate-label");
     this.promptArea = contentEl.createEl("textarea", {
       cls: "nd-ai-delegate-prompt",
     });
@@ -73,14 +81,18 @@ export class AIDelegationModal extends Modal {
     this.promptArea.rows = 10;
 
     const btnRow = contentEl.createDiv({ cls: "nd-ai-delegate-buttons" });
-    this.cancelBtn = btnRow.createEl("button", { text: "閉じる" });
-    this.cancelBtn.addEventListener("click", () => {
-      if (this.session) {
-        this.session.cancel();
-        new Notice("AIセッションをキャンセルしました");
-      }
-      this.close();
-    });
+
+    this.openLogBtn = btnRow.createEl("button", { text: "📄 ログを開く" });
+    this.openLogBtn.disabled = true;
+    this.openLogBtn.addEventListener("click", () => this.openLogFile());
+
+    this.abortBtn = btnRow.createEl("button", { text: "🛑 中止" });
+    this.abortBtn.disabled = true;
+    this.abortBtn.addEventListener("click", () => this.abortSession());
+
+    this.closeBtn = btnRow.createEl("button", { text: "閉じる" });
+    this.closeBtn.addEventListener("click", () => this.close());
+
     this.runBtn = btnRow.createEl("button", {
       text: "🚀 AIに渡す",
       cls: "mod-cta",
@@ -93,59 +105,110 @@ export class AIDelegationModal extends Modal {
   }
 
   onClose(): void {
-    if (this.session) {
-      this.session.cancel();
+    this.uiLive = false;
+    // intentionally do NOT cancel the session — it keeps streaming to the
+    // log file. The notice tells the user where to look.
+    if (this.running && this.writer) {
+      new Notice(`AI移譲は継続中。ログ: ${this.writer.path}`, 6000);
     }
     this.contentEl.empty();
   }
 
+  private async openLogFile(): Promise<void> {
+    if (!this.writer) return;
+    const f = this.app.vault.getAbstractFileByPath(this.writer.path);
+    if (!(f instanceof TFile)) {
+      new Notice(`ログファイルが見つかりません: ${this.writer.path}`);
+      return;
+    }
+    const leaf = this.app.workspace.getLeaf("split");
+    await leaf.openFile(f);
+  }
+
+  private abortSession(): void {
+    if (!this.session) return;
+    this.session.cancel();
+    new Notice("AIセッションを中止しました");
+  }
+
   private async run(): Promise<void> {
     if (!this.promptArea || !this.modeSelect || !this.runBtn) return;
+    if (this.running) {
+      new Notice("既に実行中です");
+      return;
+    }
     const prompt = this.promptArea.value.trim();
     if (!prompt) {
       new Notice("指示が空です");
       return;
     }
     const mode = this.modeSelect.value as "acceptEdits" | "bypassPermissions";
+
+    this.running = true;
     this.runBtn.disabled = true;
     this.runBtn.setText("実行中…");
+    this.promptArea.disabled = true;
+    this.modeSelect.disabled = true;
+    if (this.abortBtn) this.abortBtn.disabled = false;
+    if (this.openLogBtn) this.openLogBtn.disabled = true;
     if (this.logEl) this.logEl.empty();
-    if (this.statusEl) this.statusEl.setText("claude起動中…");
+
+    // Create writer & init log file
+    try {
+      this.writer = await AILogWriter.create(this.app, this.opts.taskFile.basename);
+      await this.writer.init({
+        taskPath: this.opts.taskFile.path,
+        permissionMode: mode,
+        prompt,
+      });
+    } catch (e) {
+      this.running = false;
+      if (this.runBtn) {
+        this.runBtn.disabled = false;
+        this.runBtn.setText("🚀 AIに渡す");
+      }
+      if (this.statusEl) this.statusEl.setText(`ログ作成失敗: ${(e as Error).message}`);
+      new Notice(`ログ作成失敗: ${(e as Error).message}`);
+      return;
+    }
+    if (this.openLogBtn) this.openLogBtn.disabled = false;
+    // Auto-open the log file in a split so the user can watch it live.
+    void this.openLogFile();
 
     const t0 = Date.now();
-    let textBuf = "";
     let toolCount = 0;
 
     const onEvent = (e: StreamEvent): void => {
-      const log = this.logEl;
-      if (!log) return;
-      const line = log.createDiv({ cls: `nd-ai-log-line nd-ai-log-${e.kind}` });
+      if (e.kind === "tool_use") toolCount++;
+
+      // Write to log file (best-effort, never throws into pipeline).
+      if (this.writer) void this.writer.logEvent(e);
+
+      // Update modal UI if still open.
+      if (!this.uiLive || !this.logEl) return;
+      const line = this.logEl.createDiv({ cls: `nd-ai-log-line nd-ai-log-${e.kind}` });
       const ts = new Date().toLocaleTimeString();
       line.createSpan({ cls: "nd-ai-log-ts", text: ts });
       const body = line.createSpan({ cls: "nd-ai-log-body" });
 
-      if (e.kind === "system") {
-        body.setText(e.text ?? "(system)");
-      } else if (e.kind === "text") {
-        body.setText(e.text ?? "");
-        textBuf += (e.text ?? "") + "\n";
-      } else if (e.kind === "tool_use") {
-        toolCount++;
-        body.setText(`🔧 ${e.text}`);
-      } else if (e.kind === "tool_result") {
+      if (e.kind === "system") body.setText(e.text ?? "(system)");
+      else if (e.kind === "text") body.setText(e.text ?? "");
+      else if (e.kind === "tool_use") body.setText(`🔧 ${e.text}`);
+      else if (e.kind === "tool_result") {
         body.setText(`  ↳ ${e.text}`);
         if (e.isError) line.addClass("nd-ai-log-error");
       } else if (e.kind === "result") {
         const dur = ((Date.now() - t0) / 1000).toFixed(1);
         body.setText(`✅ 完了 (${dur}s, tools=${toolCount})`);
-      } else if (e.kind === "stderr") {
-        body.setText(`stderr: ${e.text}`);
-      } else if (e.kind === "error") {
+      } else if (e.kind === "stderr") body.setText(`stderr: ${e.text}`);
+      else if (e.kind === "error") {
         body.setText(`❌ ${e.text}`);
         line.addClass("nd-ai-log-error");
       }
-      log.scrollTop = log.scrollHeight;
+      this.logEl.scrollTop = this.logEl.scrollHeight;
     };
+
+    if (this.statusEl) this.statusEl.setText("claude起動中…");
 
     try {
       this.session = runClaudeStream({
@@ -155,34 +218,66 @@ export class AIDelegationModal extends Modal {
         permissionMode: mode,
         onEvent,
       });
-      if (this.statusEl) this.statusEl.setText("実行中…");
+      if (this.statusEl) this.statusEl.setText("実行中… (閉じても継続)");
+
       const res = await this.session.done;
+      const dur = Date.now() - t0;
       this.session = null;
-      const dur = ((Date.now() - t0) / 1000).toFixed(1);
-      if (this.statusEl) {
-        this.statusEl.setText(
-          res.ok ? `完了 ${dur}s` : `エラー (code=${res.code})`
-        );
+
+      // Always finalize log file, even if modal closed.
+      if (this.writer) {
+        await this.writer.finalize({
+          ok: res.ok,
+          cancelled: res.code === null && !res.ok,
+          durationMs: dur,
+          toolCount,
+        });
       }
-      if (this.runBtn) {
-        this.runBtn.disabled = false;
-        this.runBtn.setText(res.ok ? "✅ 再実行" : "🔁 再試行");
-      }
+
+      this.running = false;
+
+      // Notify regardless of modal state.
       if (res.ok) {
-        new Notice(`AI移譲完了: ${this.opts.taskFile.basename} (${dur}s)`);
-      } else if (this.statusEl) {
-        new Notice(`AI移譲失敗 — ログを確認してください`);
+        new Notice(`AI移譲完了: ${this.opts.taskFile.basename} (${(dur / 1000).toFixed(1)}s)`);
+      } else {
+        new Notice(`AI移譲失敗 (code=${res.code}) — ログ参照`);
       }
-      // textBuf is incremental assistant text; final result is also captured in
-      // res.finalText. Claude itself should have appended to the task file via
-      // its Edit tool. We don't auto-append a duplicate.
+
+      // Update UI if still visible.
+      if (this.uiLive) {
+        if (this.statusEl) {
+          this.statusEl.setText(
+            res.ok ? `完了 ${(dur / 1000).toFixed(1)}s` : `エラー (code=${res.code})`
+          );
+        }
+        if (this.runBtn) {
+          this.runBtn.disabled = false;
+          this.runBtn.setText(res.ok ? "✅ 再実行" : "🔁 再試行");
+        }
+        if (this.abortBtn) this.abortBtn.disabled = true;
+        if (this.promptArea) this.promptArea.disabled = false;
+        if (this.modeSelect) this.modeSelect.disabled = false;
+      }
     } catch (e) {
+      this.running = false;
       const msg = (e as Error).message;
-      if (this.statusEl) this.statusEl.setText(`起動失敗: ${msg}`);
+      if (this.writer) {
+        await this.writer.finalize({
+          ok: false,
+          durationMs: Date.now() - t0,
+          toolCount,
+        });
+      }
       new Notice(`起動失敗: ${msg}`);
-      if (this.runBtn) {
-        this.runBtn.disabled = false;
-        this.runBtn.setText("🔁 再試行");
+      if (this.uiLive) {
+        if (this.statusEl) this.statusEl.setText(`起動失敗: ${msg}`);
+        if (this.runBtn) {
+          this.runBtn.disabled = false;
+          this.runBtn.setText("🔁 再試行");
+        }
+        if (this.abortBtn) this.abortBtn.disabled = true;
+        if (this.promptArea) this.promptArea.disabled = false;
+        if (this.modeSelect) this.modeSelect.disabled = false;
       }
     }
   }

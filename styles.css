@@ -1040,9 +1040,25 @@
 }
 
 /* AI Delegation Modal */
+.modal.nd-ai-delegate-modal-wrap {
+  width: 95vw;
+  max-width: 1200px;
+}
+
+.modal.nd-ai-delegate-modal-wrap .modal-content {
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
 .nd-ai-delegate-modal {
-  max-width: 720px;
-  width: 90vw;
+  width: 100%;
+}
+
+.nd-ai-delegate-label {
+  font-weight: 600;
+  display: block;
+  margin-top: 12px;
+  margin-bottom: 4px;
 }
 
 .nd-ai-delegate-warn {
@@ -1064,8 +1080,10 @@
   font-family: var(--font-monospace);
   font-size: 0.85em;
   resize: vertical;
-  min-height: 12em;
+  min-height: 10em;
+  max-height: 24em;
   margin-bottom: 12px;
+  box-sizing: border-box;
 }
 
 .nd-ai-delegate-buttons {
@@ -1082,7 +1100,7 @@
 }
 
 .nd-ai-delegate-log {
-  max-height: 320px;
+  max-height: 360px;
   overflow-y: auto;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
