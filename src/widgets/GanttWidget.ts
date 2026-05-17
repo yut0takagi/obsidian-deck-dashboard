@@ -192,40 +192,40 @@ async function renderGantt(
 
   // Toolbar
   const toolbar = el.createDiv({ cls: "nd-gantt-toolbar" });
-  const left = toolbar.createDiv({ cls: "nd-gantt-toolbar-left" });
-  const right = toolbar.createDiv({ cls: "nd-gantt-toolbar-right" });
+  const tbLeft = toolbar.createDiv({ cls: "nd-gantt-toolbar-left" });
+  const tbRight = toolbar.createDiv({ cls: "nd-gantt-toolbar-right" });
 
-  mkBtn(left, "« 前へ", () => {
+  mkBtn(tbLeft, "« 前へ", () => {
     state.offsetDays -= Math.max(1, Math.floor(settings.windowDaysForward / 2));
     renderGantt(el, settings, ctx);
   });
-  mkBtn(left, "今日", () => {
+  mkBtn(tbLeft, "今日", () => {
     state.offsetDays = 0;
     renderGantt(el, settings, ctx);
   });
-  mkBtn(left, "次へ »", () => {
+  mkBtn(tbLeft, "次へ »", () => {
     state.offsetDays += Math.max(1, Math.floor(settings.windowDaysForward / 2));
     renderGantt(el, settings, ctx);
   });
 
-  const periodLabel = right.createSpan({
+  const periodLabel = tbRight.createSpan({
     cls: "nd-gantt-period",
     text: `${fmt(windowStart)} 〜 ${fmt(windowEnd)} (${totalDays}日 / ${dayWidth}px)`,
   });
   void periodLabel;
-  mkBtn(right, "−", () => {
+  mkBtn(tbRight, "−", () => {
     if (state.zoomIdx > 0) {
       state.zoomIdx--;
       renderGantt(el, settings, ctx);
     }
   });
-  mkBtn(right, "+", () => {
+  mkBtn(tbRight, "+", () => {
     if (state.zoomIdx < ZOOM_LEVELS.length - 1) {
       state.zoomIdx++;
       renderGantt(el, settings, ctx);
     }
   });
-  mkBtn(right, "リセット", () => {
+  mkBtn(tbRight, "リセット", () => {
     state.zoomIdx = nearestZoomIdx(settings.dayWidth);
     state.offsetDays = 0;
     renderGantt(el, settings, ctx);
