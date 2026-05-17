@@ -972,6 +972,24 @@
   font-family: var(--font-monospace);
 }
 
+.nd-ai-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.nd-ai-web-result {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--background-modifier-border);
+}
+
+.nd-ai-web-head {
+  margin: 0 0 8px 0;
+  font-size: 0.9em;
+}
+
 .nd-ai-result {
   flex: 1;
   overflow-y: auto;

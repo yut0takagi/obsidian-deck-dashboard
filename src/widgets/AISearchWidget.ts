@@ -78,9 +78,14 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
     const meta = el.createDiv({ cls: "nd-ai-meta nd-muted" });
     const result = el.createDiv({ cls: "nd-ai-result" });
 
+    let lastQuery = "";
+    let lastVaultAnswer = "";
+
     const submit = async (): Promise<void> => {
       const q = input.value.trim();
       if (!q) return;
+      lastQuery = q;
+      lastVaultAnswer = "";
       meta.empty();
       meta.setText("候補抽出中…");
       result.empty();
@@ -132,10 +137,12 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
             `候補 ${candidates.length} 件 / API ${settings.model} / 入力 ${res.inputTokens}t 出力 ${res.outputTokens}t`
           );
         }
+        lastVaultAnswer = answerMd;
         result.empty();
         const md = result.createDiv({ cls: "nd-ai-md" });
         await MarkdownRenderer.render(ctx.app, answerMd, md, ctx.sourcePath, ctx.parent);
         wireInternalLinks(md, ctx.app, ctx.sourcePath);
+        renderActions(result, q, answerMd, /* isWebResult */ false);
       } catch (e) {
         meta.empty();
         result.empty();
@@ -143,13 +150,138 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
       }
     };
 
+    const runWebSearch = async (query: string): Promise<void> => {
+      meta.empty();
+      meta.setText("Web検索中…");
+      result.empty();
+
+      const webPrompt =
+        "WebSearchツールを使って次の質問を調査し、要点を日本語Markdownでまとめてください。\n" +
+        "- 信頼できる情報源を3-5件選ぶ (公式ドキュメント・主要メディア・専門ブログ等)\n" +
+        "- 各論点を箇条書きで簡潔に\n" +
+        "- 最後に \"## 参照\" セクションを作り、見出し+URLでソースを並べる\n" +
+        "- 推測・憶測は避け、ソースに無い情報は明記\n" +
+        `\n# 質問\n${query}`;
+
+      try {
+        const t0 = Date.now();
+        const cc = await runClaudeP(webPrompt, settings.claudeCmd);
+        const webMd = cc.text.trim();
+        const ms = Date.now() - t0;
+        meta.setText(`🌐 Web検索完了 / claude -p (WebSearch) / ${ms}ms`);
+
+        const wrap = result.createDiv({ cls: "nd-ai-web-result" });
+        wrap.createEl("h4", { text: "🌐 Web検索結果", cls: "nd-ai-web-head" });
+        const md = wrap.createDiv({ cls: "nd-ai-md" });
+        await MarkdownRenderer.render(ctx.app, webMd, md, ctx.sourcePath, ctx.parent);
+        wireInternalLinks(md, ctx.app, ctx.sourcePath);
+        renderActions(wrap, query, webMd, /* isWebResult */ true);
+      } catch (e) {
+        meta.empty();
+        result.createEl("pre", {
+          cls: "nd-error",
+          text: `Web search error: ${(e as Error).message}`,
+        });
+      }
+    };
+
+    const saveAsKnowledge = async (
+      query: string,
+      contentMd: string,
+      kind: "vault" | "web"
+    ): Promise<void> => {
+      const d = new Date();
+      const pad = (n: number) => String(n).padStart(2, "0");
+      const ymd = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      const slug = query.replace(/[\\/:*?"<>|\n\r\t]+/g, "_").slice(0, 50).trim() || "memo";
+      const folder = "inbox/temp";
+      if (!ctx.app.vault.getAbstractFileByPath(folder)) {
+        try {
+          await ctx.app.vault.createFolder(folder);
+        } catch {
+          /* ignore */
+        }
+      }
+      let path = `${folder}/${ymd}_${slug}.md`;
+      let i = 2;
+      while (ctx.app.vault.getAbstractFileByPath(path)) {
+        path = `${folder}/${ymd}_${slug}_${i}.md`;
+        i++;
+      }
+      const fm =
+        `---\n` +
+        `source: AI Search (${kind === "web" ? "Web" : "vault"})\n` +
+        `query: ${JSON.stringify(query)}\n` +
+        `created: ${ymd}\n` +
+        `status: 未整理\n` +
+        `---\n\n` +
+        `# ${query}\n\n` +
+        contentMd +
+        "\n";
+      try {
+        const created = await ctx.app.vault.create(path, fm);
+        new Notice(`保存: ${path}`);
+        await ctx.app.workspace.getLeaf("tab").openFile(created);
+      } catch (e) {
+        new Notice(`保存失敗: ${(e as Error).message}`);
+      }
+    };
+
+    const renderActions = (
+      parent: HTMLElement,
+      query: string,
+      answerMd: string,
+      isWebResult: boolean
+    ): void => {
+      const actions = parent.createDiv({ cls: "nd-ai-actions" });
+      const noVaultMatch = !isWebResult && /該当.*なし|該当ノートなし/.test(answerMd);
+
+      if (!isWebResult) {
+        const webBtn = actions.createEl("button", {
+          text: noVaultMatch ? "🌐 該当なし — Webで調べる" : "🌐 Webで調べる",
+          cls: noVaultMatch ? "mod-cta" : "",
+        });
+        webBtn.addEventListener("click", () => runWebSearch(query));
+      }
+
+      const saveBtn = actions.createEl("button", {
+        text: "📚 ナレッジ化 (inbox/temp)",
+        cls: isWebResult ? "mod-cta" : "",
+      });
+      saveBtn.addEventListener("click", () =>
+        saveAsKnowledge(query, answerMd, isWebResult ? "web" : "vault")
+      );
+    };
+
     goBtn.addEventListener("click", submit);
+
+    // Cmd/Ctrl+Enter to submit. Attach in capture phase on document so we
+    // beat Obsidian's own hotkey manager (which also runs in capture).
+    const cmdEnterHandler = (e: KeyboardEvent): void => {
+      if (e.key !== "Enter") return;
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (document.activeElement !== input) return;
+      e.preventDefault();
+      e.stopPropagation();
+      e.stopImmediatePropagation();
+      submit();
+    };
+    document.addEventListener("keydown", cmdEnterHandler, true);
+    ctx.parent.register(() => {
+      document.removeEventListener("keydown", cmdEnterHandler, true);
+    });
+    // Fallback for environments where document-capture is unreachable.
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
+        e.stopPropagation();
         submit();
       }
     });
+
+    // suppress unused-var warnings in fallback paths
+    void lastQuery;
+    void lastVaultAnswer;
 
     setTimeout(() => input.focus(), 50);
   },
