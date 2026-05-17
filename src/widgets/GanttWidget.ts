@@ -251,28 +251,62 @@ async function renderGantt(
       cls: "nd-empty",
       text:
         settings.source === "markwhen"
-          ? `${settings.markwhenPath} に表示期間内のイベントがありません`
-          : `フォルダ "${settings.folder}" に表示期間内の期限を持つタスクがありません`,
+          ? `${settings.markwhenPath} にイベントがありません`
+          : `フォルダ "${settings.folder}" に期限を持つタスクがありません`,
     });
     return;
   }
 
-  // Group bars by section → group (for markwhen) or by group field (frontmatter)
   const ordered = orderBars(bars);
 
-  const chart = el.createDiv({ cls: "nd-gantt-chart" });
-  const labelCol = chart.createDiv({ cls: "nd-gantt-labels" });
-  const grid = chart.createDiv({ cls: "nd-gantt-grid" });
-  const gridInner = grid.createDiv({ cls: "nd-gantt-grid-inner" });
-  gridInner.style.width = `${totalDays * dayWidth}px`;
+  // Skip bars entirely outside the window (label + bar both gone — no orphans).
+  // Bars partially in window will be clamped at render time.
+  const visible = ordered.filter((b) => b.end >= windowStart && b.start <= windowEnd);
 
-  // Header
-  const labelHeader = labelCol.createDiv({ cls: "nd-gantt-label-header", text: "タスク" });
-  void labelHeader;
-  const gridHeader = gridInner.createDiv({ cls: "nd-gantt-grid-header" });
+  if (visible.length === 0) {
+    el.createDiv({
+      cls: "nd-empty",
+      text: `この期間 (${fmt(windowStart)} 〜 ${fmt(windowEnd)}) にイベントなし。« 前へ / 次へ » で期間を動かすか、設定で期間日数を増やしてください。`,
+    });
+    return;
+  }
+
+  // Count rows: each visible bar gets a row, plus 1 row per new section
+  let rowCount = 0;
+  let countingSection = "__none__";
+  for (const b of visible) {
+    if (b.section !== countingSection) {
+      countingSection = b.section;
+      if (countingSection) rowCount++; // section divider row
+    }
+    rowCount++;
+  }
+
+  // Build single scroll container with CSS grid layout
+  // Layout: 2 columns (label 200px | body), 1 + rowCount rows
+  // - Row 0: corner (sticky top+left) + header (sticky top)
+  // - Row N: label (sticky left) + body (relative, contains bar)
+  const HEADER_H = 48;
+  const LABEL_W = 200;
+  const totalWidth = totalDays * dayWidth;
+
+  const scroll = el.createDiv({ cls: "nd-gantt-scroll" });
+  const table = scroll.createDiv({ cls: "nd-gantt-table" });
+  table.style.gridTemplateColumns = `${LABEL_W}px ${totalWidth}px`;
+  table.style.gridTemplateRows = `${HEADER_H}px repeat(${rowCount}, ${settings.rowHeight}px)`;
+
+  // Corner (top-left)
+  const corner = table.createDiv({ cls: "nd-gantt-corner", text: "タスク" });
+  corner.style.gridRow = "1";
+  corner.style.gridColumn = "1";
+
+  // Date header (top, sticky)
+  const header = table.createDiv({ cls: "nd-gantt-header" });
+  header.style.gridRow = "1";
+  header.style.gridColumn = "2";
   for (let i = 0; i < totalDays; i++) {
     const d = new Date(windowStart.getTime() + i * DAY_MS);
-    const cell = gridHeader.createDiv({ cls: "nd-gantt-day-cell" });
+    const cell = header.createDiv({ cls: "nd-gantt-day-cell" });
     cell.style.width = `${dayWidth}px`;
     cell.style.left = `${i * dayWidth}px`;
     if (isWeekend(d)) cell.addClass("nd-gantt-weekend");
@@ -291,60 +325,62 @@ async function renderGantt(
     }
   }
 
-  // Render rows with section/group headers interleaved
-  let rowIdx = 0;
+  // Rows
+  let gridRow = 2; // 1 is header row
   let currentSection = "__none__";
-  let currentGroup = "__none__";
-  for (const bar of ordered) {
+  for (const bar of visible) {
     if (bar.section !== currentSection) {
       currentSection = bar.section;
-      currentGroup = "__none__";
       if (currentSection) {
-        const sec = labelCol.createDiv({ cls: "nd-gantt-section-label", text: currentSection });
-        sec.style.height = `${settings.rowHeight}px`;
-        const secRow = gridInner.createDiv({ cls: "nd-gantt-section-row" });
-        secRow.style.top = `${rowIdx * settings.rowHeight + 48}px`;
-        secRow.style.width = `${totalDays * dayWidth}px`;
-        secRow.style.height = `${settings.rowHeight}px`;
-        rowIdx++;
+        const sLabel = table.createDiv({ cls: "nd-gantt-section-label", text: currentSection });
+        sLabel.style.gridRow = String(gridRow);
+        sLabel.style.gridColumn = "1";
+        const sBody = table.createDiv({ cls: "nd-gantt-section-body" });
+        sBody.style.gridRow = String(gridRow);
+        sBody.style.gridColumn = "2";
+        gridRow++;
       }
     }
-    if (bar.group && bar.group !== currentGroup) {
-      currentGroup = bar.group;
-    }
 
-    const label = labelCol.createDiv({ cls: "nd-gantt-task-label" });
-    label.style.height = `${settings.rowHeight}px`;
+    // Task label (sticky left)
+    const label = table.createDiv({ cls: "nd-gantt-task-label" });
+    label.style.gridRow = String(gridRow);
+    label.style.gridColumn = "1";
     if (bar.isGroupHeader) label.addClass("nd-gantt-task-label-group");
     if (bar.group && !bar.isGroupHeader) label.addClass("nd-gantt-task-label-child");
     const link = label.createEl("a", { cls: "nd-gantt-task-link", text: bar.title });
-    if (bar.onClick) link.addEventListener("click", (e) => {
-      e.preventDefault();
-      bar.onClick?.();
-    });
+    if (bar.onClick)
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        bar.onClick?.();
+      });
 
-    const row = gridInner.createDiv({ cls: "nd-gantt-task-row" });
-    row.style.top = `${rowIdx * settings.rowHeight + 48}px`;
-    row.style.width = `${totalDays * dayWidth}px`;
-    row.style.height = `${settings.rowHeight}px`;
-    if (rowIdx % 2 === 1) row.addClass("nd-gantt-row-alt");
+    // Body cell with bar
+    const body = table.createDiv({ cls: "nd-gantt-task-body" });
+    body.style.gridRow = String(gridRow);
+    body.style.gridColumn = "2";
+    if ((gridRow - 2) % 2 === 1) body.addClass("nd-gantt-row-alt");
 
+    // Clamp bar within window for rendering. We already filtered out bars
+    // fully outside window above.
     const startDays = Math.max(0, daysBetween(windowStart, bar.start));
     const endDaysExcl = Math.min(totalDays, daysBetween(windowStart, bar.end) + 1);
     const startPx = startDays * dayWidth;
     const widthPx = Math.max(dayWidth, (endDaysExcl - startDays) * dayWidth);
 
-    const barEl = row.createDiv({ cls: "nd-gantt-bar" });
+    const barEl = body.createDiv({ cls: "nd-gantt-bar" });
     barEl.style.left = `${startPx}px`;
     barEl.style.width = `${widthPx}px`;
     barEl.style.height = `${settings.rowHeight - 6}px`;
+    // Mark clamped edges visually
+    if (bar.start < windowStart) barEl.addClass("nd-gantt-bar-clip-left");
+    if (bar.end > windowEnd) barEl.addClass("nd-gantt-bar-clip-right");
     barEl.title = bar.tooltip ?? `${bar.title}\n${fmt(bar.start)} → ${fmt(bar.end)}`;
     if (bar.done) barEl.addClass("nd-gantt-bar-done");
     if (bar.isGroupHeader) barEl.addClass("nd-gantt-bar-group");
     const overdue = bar.end < today && !bar.done;
     if (overdue) barEl.addClass("nd-gantt-bar-overdue");
 
-    // Apply tag color if any matches header
     const tagColor = bar.tags.map((t) => tagColors[t]).find(Boolean);
     if (tagColor && !overdue && !bar.done) {
       barEl.style.background = tagColor;
@@ -357,19 +393,21 @@ async function renderGantt(
       barEl.addClass("nd-gantt-bar-clickable");
     }
 
-    rowIdx++;
+    gridRow++;
   }
 
-  // Today line
-  const todayLine = gridInner.createDiv({ cls: "nd-gantt-today-line" });
+  // Today vertical line (positioned within scroll table, spans all body rows)
   const todayDays = daysBetween(windowStart, today);
-  todayLine.style.left = `${todayDays * dayWidth + dayWidth / 2}px`;
-  todayLine.style.height = `${rowIdx * settings.rowHeight + 48}px`;
+  if (todayDays >= 0 && todayDays <= totalDays) {
+    const todayLine = table.createDiv({ cls: "nd-gantt-today-line" });
+    todayLine.style.gridRow = `1 / ${gridRow}`;
+    todayLine.style.gridColumn = "2";
+    todayLine.style.left = `${todayDays * dayWidth + dayWidth / 2}px`;
+  }
 
-  labelCol.style.minHeight = `${rowIdx * settings.rowHeight + 48}px`;
-
+  // Auto-scroll horizontally so today is near left edge of body
   setTimeout(() => {
-    grid.scrollLeft = Math.max(0, todayDays * dayWidth - 100);
+    scroll.scrollLeft = Math.max(0, todayDays * dayWidth - 80);
   }, 0);
 }
 
@@ -393,8 +431,9 @@ async function collectFromMarkwhen(
   const doc = parseMarkwhen(raw);
 
   const bars: Bar[] = [];
+  void windowStart;
+  void windowEnd;
   for (const ev of doc.events) {
-    if (ev.end < windowStart || ev.start > windowEnd) continue;
     const done = ev.tags.includes("done");
     const tooltip =
       `${ev.title}\n${fmt(ev.start)} → ${fmt(ev.end)}` +
@@ -454,7 +493,8 @@ function collectFromFrontmatter(
       const days = dur < 1 ? 3 : Math.max(1, Math.ceil(dur));
       start = new Date(end.getTime() - (days - 1) * DAY_MS);
     }
-    if (end < windowStart || start > windowEnd) continue;
+    void windowStart;
+    void windowEnd;
     const pjt = fm[settings.groupByField] ? String(fm[settings.groupByField]) : "";
     out.push({
       start,

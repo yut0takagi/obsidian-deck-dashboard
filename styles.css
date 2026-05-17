@@ -540,66 +540,88 @@
   font-family: var(--font-monospace);
 }
 
-.nd-gantt-chart {
-  display: flex;
+.nd-gantt-scroll {
   flex: 1;
   min-height: 0;
+  overflow: auto;
   font-size: 0.8em;
-}
-
-.nd-gantt-labels {
-  flex: 0 0 200px;
-  border-right: 2px solid var(--background-modifier-border);
   background: var(--background-primary);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
-.nd-gantt-label-header {
-  height: 48px;
-  display: flex;
-  align-items: flex-end;
-  padding: 0 8px 6px;
-  font-weight: 700;
-  border-bottom: 1px solid var(--background-modifier-border);
-  background: var(--background-primary-alt);
+.nd-gantt-table {
+  display: grid;
+  position: relative;
+}
+
+.nd-gantt-corner {
   position: sticky;
   top: 0;
-  z-index: 2;
+  left: 0;
+  z-index: 5;
+  background: var(--background-primary-alt);
+  border-right: 2px solid var(--background-modifier-border);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 0 8px;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 6px;
+  font-weight: 700;
 }
 
-.nd-gantt-group-label {
-  padding: 4px 8px;
-  font-weight: 700;
-  background: var(--background-secondary);
-  color: var(--text-accent);
+.nd-gantt-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--background-primary-alt);
   border-bottom: 1px solid var(--background-modifier-border);
-  font-size: 0.92em;
+  /* fill the cell */
+  position: -webkit-sticky;
+  position: sticky;
+  height: 48px;
+}
+
+.nd-gantt-task-label {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--background-primary);
+  border-right: 2px solid var(--background-modifier-border);
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding: 0 8px;
   display: flex;
   align-items: center;
+  overflow: hidden;
+}
+
+.nd-gantt-task-body {
+  position: relative;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.nd-gantt-task-body.nd-gantt-row-alt {
+  background: var(--background-secondary);
 }
 
 .nd-gantt-section-label {
+  position: sticky;
+  left: 0;
+  z-index: 3;
   padding: 4px 8px;
   font-weight: 800;
   background: var(--background-modifier-form-field);
   color: var(--text-accent);
   border-top: 2px solid var(--interactive-accent);
   border-bottom: 1px solid var(--background-modifier-border);
+  border-right: 2px solid var(--background-modifier-border);
   font-size: 0.95em;
   display: flex;
   align-items: center;
-  text-transform: none;
 }
 
-.nd-gantt-section-row {
-  position: absolute;
-  left: 0;
+.nd-gantt-section-body {
   background: var(--background-modifier-form-field);
   border-top: 2px solid var(--interactive-accent);
   border-bottom: 1px solid var(--background-modifier-border);
-  pointer-events: none;
 }
 
 .nd-gantt-task-label-group .nd-gantt-task-link {
@@ -648,27 +670,6 @@
   text-decoration: underline;
 }
 
-.nd-gantt-grid {
-  flex: 1;
-  overflow-x: auto;
-  overflow-y: hidden;
-  background: var(--background-primary);
-  position: relative;
-}
-
-.nd-gantt-grid-inner {
-  position: relative;
-  height: 100%;
-}
-
-.nd-gantt-grid-header {
-  position: sticky;
-  top: 0;
-  height: 48px;
-  background: var(--background-primary-alt);
-  border-bottom: 1px solid var(--background-modifier-border);
-  z-index: 2;
-}
 
 .nd-gantt-day-cell {
   position: absolute;
@@ -705,25 +706,6 @@
 .nd-gantt-weekday {
   font-size: 0.7em;
   color: var(--text-muted);
-}
-
-.nd-gantt-task-row {
-  position: absolute;
-  left: 0;
-  pointer-events: none;
-}
-
-.nd-gantt-task-row.nd-gantt-row-alt {
-  background: var(--background-secondary);
-  opacity: 0.4;
-}
-
-.nd-gantt-group-row {
-  position: absolute;
-  left: 0;
-  background: var(--background-modifier-form-field);
-  border-bottom: 1px solid var(--background-modifier-border);
-  pointer-events: none;
 }
 
 .nd-gantt-bar {
@@ -770,13 +752,26 @@
 .nd-gantt-bar-prio-medium { background: #fbc02d; color: #333; }
 .nd-gantt-bar-prio-low { background: #9e9e9e; color: white; }
 
+.nd-gantt-bar-clip-left {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: 2px dashed rgba(255,255,255,0.6);
+}
+
+.nd-gantt-bar-clip-right {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: 2px dashed rgba(255,255,255,0.6);
+}
+
 .nd-gantt-today-line {
   position: absolute;
   top: 0;
+  bottom: 0;
   width: 2px;
   background: #ff5252;
   pointer-events: none;
-  z-index: 3;
+  z-index: 2;
   box-shadow: 0 0 4px rgba(255, 82, 82, 0.5);
 }
 
