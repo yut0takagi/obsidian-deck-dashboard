@@ -12,9 +12,25 @@ export interface CalEvent {
 }
 
 export async function fetchIcal(url: string): Promise<string> {
-  const res = await requestUrl({ url, method: "GET" });
+  let res;
+  try {
+    res = await requestUrl({ url, method: "GET" });
+  } catch (e) {
+    throw new Error(`ネットワークエラー: ${(e as Error).message}`);
+  }
+  if (res.status === 403) {
+    throw new Error(
+      `HTTP 403 Forbidden — このURLは社内ネットワーク/VPN専用、もしくはトークンが失効している可能性。Googleカレンダーの「カレンダーの非公開URL（iCal形式）」推奨。`
+    );
+  }
+  if (res.status === 404) {
+    throw new Error(`HTTP 404 — URLが見つかりません。URLの再取得を。`);
+  }
+  if (res.status === 401) {
+    throw new Error(`HTTP 401 — 認証が必要。iCal URLはトークン埋め込み式の公開URLにしてください。`);
+  }
   if (res.status >= 400) {
-    throw new Error(`iCal fetch failed: HTTP ${res.status}`);
+    throw new Error(`HTTP ${res.status}`);
   }
   return res.text;
 }
