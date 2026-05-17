@@ -133,12 +133,13 @@
 }
 
 .nd-widget-body {
-  flex: 1;
+  flex: 1 1 0;
   overflow-y: auto;
   overflow-x: auto;
   font-size: 0.92em;
   line-height: 1.5;
   min-height: 0; /* critical for inner flex children to scroll */
+  min-width: 0; /* same, for horizontal */
 }
 
 .nd-widget-body table {
@@ -495,9 +496,12 @@
 /* Gantt widget */
 .nd-widget-gantt {
   height: 100%;
+  width: 100%;
   min-height: 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .nd-gantt-toolbar {
@@ -541,8 +545,10 @@
 }
 
 .nd-gantt-scroll {
-  flex: 1;
+  flex: 1 1 0;
+  min-width: 0; /* critical: lets flex child shrink so inner overflow:auto kicks in */
   min-height: 0;
+  width: 100%;
   overflow: auto;
   font-size: 0.8em;
   background: var(--background-primary);
