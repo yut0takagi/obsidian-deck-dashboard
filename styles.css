@@ -544,87 +544,97 @@
   font-family: var(--font-monospace);
 }
 
-.nd-gantt-scroll {
+/* 2-pane synced-scroll layout (replaces old sticky grid) */
+.nd-gantt-chart2 {
   flex: 1 1 0;
-  min-width: 0; /* critical: lets flex child shrink so inner overflow:auto kicks in */
   min-height: 0;
-  width: 100%;
-  overflow: auto;
-  font-size: 0.8em;
+  min-width: 0;
+  display: flex;
   background: var(--background-primary);
+  font-size: 0.8em;
+  overflow: hidden;
 }
 
-.nd-gantt-table {
-  display: grid;
+.nd-gantt-left {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  border-right: 2px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  min-height: 0;
+}
+
+.nd-gantt-left-corner {
+  flex: 0 0 48px;
+  display: flex;
+  align-items: flex-end;
+  padding: 0 8px 6px;
+  font-weight: 700;
+  background: var(--background-primary-alt);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.nd-gantt-left-body {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden; /* scrollTop driven by JS sync */
   position: relative;
 }
 
-.nd-gantt-corner {
-  position: sticky;
-  top: 0;
-  left: 0;
-  z-index: 5;
-  background: var(--background-primary-alt);
-  border-right: 2px solid var(--background-modifier-border);
-  border-bottom: 1px solid var(--background-modifier-border);
-  padding: 0 8px;
-  display: flex;
-  align-items: flex-end;
-  padding-bottom: 6px;
-  font-weight: 700;
+.nd-gantt-right {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
 }
 
-.nd-gantt-header {
+.nd-gantt-right-header {
   position: sticky;
   top: 0;
   z-index: 4;
   background: var(--background-primary-alt);
   border-bottom: 1px solid var(--background-modifier-border);
-  /* fill the cell */
-  position: -webkit-sticky;
-  position: sticky;
-  height: 48px;
+}
+
+.nd-gantt-right-body {
+  position: relative;
 }
 
 .nd-gantt-task-label {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  background: var(--background-primary);
-  border-right: 2px solid var(--background-modifier-border);
   border-bottom: 1px solid var(--background-modifier-border);
   padding: 0 8px;
   display: flex;
   align-items: center;
   overflow: hidden;
+  background: var(--background-primary);
 }
 
-.nd-gantt-task-body {
-  position: relative;
+.nd-gantt-task-row {
+  position: absolute;
+  left: 0;
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.nd-gantt-task-body.nd-gantt-row-alt {
+.nd-gantt-task-row.nd-gantt-row-alt {
   background: var(--background-secondary);
 }
 
 .nd-gantt-section-label {
-  position: sticky;
-  left: 0;
-  z-index: 3;
   padding: 4px 8px;
   font-weight: 800;
   background: var(--background-modifier-form-field);
   color: var(--text-accent);
   border-top: 2px solid var(--interactive-accent);
   border-bottom: 1px solid var(--background-modifier-border);
-  border-right: 2px solid var(--background-modifier-border);
   font-size: 0.95em;
   display: flex;
   align-items: center;
 }
 
-.nd-gantt-section-body {
+.nd-gantt-section-row {
+  position: absolute;
+  left: 0;
   background: var(--background-modifier-form-field);
   border-top: 2px solid var(--interactive-accent);
   border-bottom: 1px solid var(--background-modifier-border);

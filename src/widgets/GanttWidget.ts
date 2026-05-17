@@ -285,31 +285,32 @@ async function renderGantt(
     rowCount++;
   }
 
-  // Build single scroll container with CSS grid layout
-  // Layout: 2 columns (label 200px | body), 1 + rowCount rows
-  // - Row 0: corner (sticky top+left) + header (sticky top)
-  // - Row N: label (sticky left) + body (relative, contains bar)
+  // ─────────────────────────────────────────────────────────────────────────
+  // Two-pane synced scroll layout. Left pane is physically separate from
+  // the horizontally-scrolling right pane, so it never disappears.
+  // Vertical scroll is synced via JS.
+  // ─────────────────────────────────────────────────────────────────────────
   const HEADER_H = 48;
   const LABEL_W = 200;
   const totalWidth = totalDays * dayWidth;
 
-  const scroll = el.createDiv({ cls: "nd-gantt-scroll" });
-  const table = scroll.createDiv({ cls: "nd-gantt-table" });
-  table.style.gridTemplateColumns = `${LABEL_W}px ${totalWidth}px`;
-  table.style.gridTemplateRows = `${HEADER_H}px repeat(${rowCount}, ${settings.rowHeight}px)`;
+  const chart = el.createDiv({ cls: "nd-gantt-chart2" });
 
-  // Corner (top-left)
-  const corner = table.createDiv({ cls: "nd-gantt-corner", text: "タスク" });
-  corner.style.gridRow = "1";
-  corner.style.gridColumn = "1";
+  // Left pane: corner + labels (vertical-only, synced)
+  const left = chart.createDiv({ cls: "nd-gantt-left" });
+  left.style.width = `${LABEL_W}px`;
+  const leftCorner = left.createDiv({ cls: "nd-gantt-left-corner", text: "タスク" });
+  leftCorner.style.height = `${HEADER_H}px`;
+  const leftBody = left.createDiv({ cls: "nd-gantt-left-body" });
 
-  // Date header (top, sticky)
-  const header = table.createDiv({ cls: "nd-gantt-header" });
-  header.style.gridRow = "1";
-  header.style.gridColumn = "2";
+  // Right pane: header + bar grid (both axes)
+  const right = chart.createDiv({ cls: "nd-gantt-right" });
+  const rightHeader = right.createDiv({ cls: "nd-gantt-right-header" });
+  rightHeader.style.width = `${totalWidth}px`;
+  rightHeader.style.height = `${HEADER_H}px`;
   for (let i = 0; i < totalDays; i++) {
     const d = new Date(windowStart.getTime() + i * DAY_MS);
-    const cell = header.createDiv({ cls: "nd-gantt-day-cell" });
+    const cell = rightHeader.createDiv({ cls: "nd-gantt-day-cell" });
     cell.style.width = `${dayWidth}px`;
     cell.style.left = `${i * dayWidth}px`;
     if (isWeekend(d)) cell.addClass("nd-gantt-weekend");
@@ -327,28 +328,27 @@ async function renderGantt(
       });
     }
   }
+  const rightBody = right.createDiv({ cls: "nd-gantt-right-body" });
+  rightBody.style.width = `${totalWidth}px`;
 
-  // Rows
-  let gridRow = 2; // 1 is header row
+  let rowIdx = 0;
   let currentSection = "__none__";
   for (const bar of visible) {
     if (bar.section !== currentSection) {
       currentSection = bar.section;
       if (currentSection) {
-        const sLabel = table.createDiv({ cls: "nd-gantt-section-label", text: currentSection });
-        sLabel.style.gridRow = String(gridRow);
-        sLabel.style.gridColumn = "1";
-        const sBody = table.createDiv({ cls: "nd-gantt-section-body" });
-        sBody.style.gridRow = String(gridRow);
-        sBody.style.gridColumn = "2";
-        gridRow++;
+        const sLabel = leftBody.createDiv({ cls: "nd-gantt-section-label", text: currentSection });
+        sLabel.style.height = `${settings.rowHeight}px`;
+        const sRow = rightBody.createDiv({ cls: "nd-gantt-section-row" });
+        sRow.style.top = `${rowIdx * settings.rowHeight}px`;
+        sRow.style.width = `${totalWidth}px`;
+        sRow.style.height = `${settings.rowHeight}px`;
+        rowIdx++;
       }
     }
 
-    // Task label (sticky left)
-    const label = table.createDiv({ cls: "nd-gantt-task-label" });
-    label.style.gridRow = String(gridRow);
-    label.style.gridColumn = "1";
+    const label = leftBody.createDiv({ cls: "nd-gantt-task-label" });
+    label.style.height = `${settings.rowHeight}px`;
     if (bar.isGroupHeader) label.addClass("nd-gantt-task-label-group");
     if (bar.group && !bar.isGroupHeader) label.addClass("nd-gantt-task-label-child");
     const link = label.createEl("a", { cls: "nd-gantt-task-link", text: bar.title });
@@ -358,24 +358,21 @@ async function renderGantt(
         bar.onClick?.();
       });
 
-    // Body cell with bar
-    const body = table.createDiv({ cls: "nd-gantt-task-body" });
-    body.style.gridRow = String(gridRow);
-    body.style.gridColumn = "2";
-    if ((gridRow - 2) % 2 === 1) body.addClass("nd-gantt-row-alt");
+    const row = rightBody.createDiv({ cls: "nd-gantt-task-row" });
+    row.style.top = `${rowIdx * settings.rowHeight}px`;
+    row.style.width = `${totalWidth}px`;
+    row.style.height = `${settings.rowHeight}px`;
+    if (rowIdx % 2 === 1) row.addClass("nd-gantt-row-alt");
 
-    // Clamp bar within window for rendering. We already filtered out bars
-    // fully outside window above.
     const startDays = Math.max(0, daysBetween(windowStart, bar.start));
     const endDaysExcl = Math.min(totalDays, daysBetween(windowStart, bar.end) + 1);
     const startPx = startDays * dayWidth;
     const widthPx = Math.max(dayWidth, (endDaysExcl - startDays) * dayWidth);
 
-    const barEl = body.createDiv({ cls: "nd-gantt-bar" });
+    const barEl = row.createDiv({ cls: "nd-gantt-bar" });
     barEl.style.left = `${startPx}px`;
     barEl.style.width = `${widthPx}px`;
     barEl.style.height = `${settings.rowHeight - 6}px`;
-    // Mark clamped edges visually
     if (bar.start < windowStart) barEl.addClass("nd-gantt-bar-clip-left");
     if (bar.end > windowEnd) barEl.addClass("nd-gantt-bar-clip-right");
     barEl.title = bar.tooltip ?? `${bar.title}\n${fmt(bar.start)} → ${fmt(bar.end)}`;
@@ -396,21 +393,43 @@ async function renderGantt(
       barEl.addClass("nd-gantt-bar-clickable");
     }
 
-    gridRow++;
+    rowIdx++;
   }
 
-  // Today vertical line (positioned within scroll table, spans all body rows)
+  const totalBodyHeight = rowIdx * settings.rowHeight;
+  leftBody.style.height = `${totalBodyHeight}px`;
+  rightBody.style.height = `${totalBodyHeight}px`;
+
+  // Today vertical line in right-body
   const todayDays = daysBetween(windowStart, today);
   if (todayDays >= 0 && todayDays <= totalDays) {
-    const todayLine = table.createDiv({ cls: "nd-gantt-today-line" });
-    todayLine.style.gridRow = `1 / ${gridRow}`;
-    todayLine.style.gridColumn = "2";
+    const todayLine = rightBody.createDiv({ cls: "nd-gantt-today-line" });
     todayLine.style.left = `${todayDays * dayWidth + dayWidth / 2}px`;
+    todayLine.style.height = `${totalBodyHeight}px`;
   }
 
-  // Auto-scroll horizontally so today is near left edge of body on first paint.
+  // Sync vertical scroll: right.scrollTop → left.scrollTop
+  // (right is the master because user scrolls it directly; left scroll is hidden)
+  let scrollSyncing = false;
+  right.addEventListener("scroll", () => {
+    if (scrollSyncing) return;
+    scrollSyncing = true;
+    leftBody.scrollTop = right.scrollTop;
+    requestAnimationFrame(() => {
+      scrollSyncing = false;
+    });
+  });
+  // Mouse wheel on left pane scrolls the right pane (so wheel-over-labels works)
+  leftBody.addEventListener("wheel", (e) => {
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+      right.scrollTop += e.deltaY;
+    }
+  });
+
+  // Auto-scroll horizontally so today is near left edge.
   setTimeout(() => {
-    scroll.scrollLeft = Math.max(0, todayDays * dayWidth - 80);
+    right.scrollLeft = Math.max(0, todayDays * dayWidth - 80);
   }, 0);
 }
 
