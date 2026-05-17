@@ -156,8 +156,8 @@ export class DashboardView extends TextFileView {
     const wrap = grid.createDiv({ cls: "nd-widget" });
     wrap.style.gridColumn = `span ${Math.max(1, Math.min(12, layout.w))}`;
     // Fixed height — body scrolls internally when content overflows.
-    // h is in grid units (60px each).
-    const px = `${Math.max(2, layout.h) * 60}px`;
+    // h is in grid units (80px each).
+    const px = `${Math.max(2, layout.h) * 80}px`;
     wrap.style.height = px;
     wrap.style.maxHeight = px;
 
@@ -184,9 +184,15 @@ export class DashboardView extends TextFileView {
     });
 
     if (this.editMode) {
-      const widthBtn = controls.createEl("button", { text: "↔", attr: { title: "幅変更" } });
+      const widthBtn = controls.createEl("button", { text: "↔", attr: { title: "幅変更 (4→6→8→10→12→4)" } });
       widthBtn.addEventListener("click", () => {
         layout.w = layout.w >= 12 ? 4 : layout.w + 2;
+        this.persist();
+        this.render();
+      });
+      const heightBtn = controls.createEl("button", { text: "↕", attr: { title: "高さ変更 (+2、最大16でループ)" } });
+      heightBtn.addEventListener("click", () => {
+        layout.h = layout.h >= 16 ? 2 : layout.h + 2;
         this.persist();
         this.render();
       });
