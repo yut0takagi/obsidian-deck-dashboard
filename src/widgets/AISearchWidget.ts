@@ -1,8 +1,13 @@
 import { MarkdownRenderer, Notice, Setting, TFile } from "obsidian";
 import type { WidgetDefinition, WidgetContext } from "./types";
 import { chat } from "../adapters/anthropic";
+import { runClaudeP } from "../adapters/claudeCode";
+
+type Backend = "claude-code" | "api";
 
 interface Settings {
+  backend: Backend;
+  claudeCmd: string;
   model: string;
   topK: number;
   excerptChars: number;
@@ -19,6 +24,8 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
   description:
     "自然言語クエリ → vault内候補をkeyword pre-filter → Claudeに渡して関連ノートを要約付きで返す。",
   defaultSettings: () => ({
+    backend: "claude-code",
+    claudeCmd: "claude",
     model: "claude-haiku-4-5-20251001",
     topK: 30,
     excerptChars: 300,
@@ -30,9 +37,10 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
 
     const data = ((await ctx.plugin.loadData()) ?? {}) as PluginData;
 
-    if (!data.anthropic_api_key) {
+    // API backend requires API key. claude-code backend doesn't.
+    if (settings.backend === "api" && !data.anthropic_api_key) {
       const empty = el.createDiv({ cls: "nd-empty" });
-      empty.createEl("p", { text: "Anthropic API キーが未設定です。" });
+      empty.createEl("p", { text: "Anthropic API キーが未設定です (API backend用)。" });
       const btn = empty.createEl("button", { text: "🔑 APIキーを設定", cls: "mod-cta" });
       btn.addEventListener("click", async () => {
         const key = window.prompt("Anthropic API key (sk-ant-... 形式):", "");
@@ -43,6 +51,8 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
         new Notice("APIキーを保存しました");
         aiSearchWidget.render(el, settings, ctx);
       });
+      const note = empty.createEl("p", { cls: "nd-muted" });
+      note.setText("または ⚙ から backend を「claude-code」に切替で `claude -p` 経由 (Pro/Maxサブスクで動作・APIキー不要)");
       return;
     }
 
@@ -85,14 +95,34 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
       const user = `# 質問\n${q}\n\n# vault候補ノート\n${ctxBlock}`;
 
       try {
-        const apiKey = data.anthropic_api_key as string;
-        const res = await chat(apiKey, settings.model, system, [{ role: "user", content: user }], 800);
-        meta.setText(
-          `候補 ${candidates.length} 件 / モデル ${settings.model} / 入力 ${res.inputTokens}t 出力 ${res.outputTokens}t`
-        );
+        let answerMd: string;
+        if (settings.backend === "claude-code") {
+          // claude -p reads prompt from stdin; combine system+user
+          const merged = `${system}\n\n---\n\n${user}`;
+          const t0 = Date.now();
+          const cc = await runClaudeP(merged, settings.claudeCmd);
+          answerMd = cc.text.trim();
+          const ms = Date.now() - t0;
+          meta.setText(
+            `候補 ${candidates.length} 件 / claude -p (${settings.claudeCmd}) / ${ms}ms`
+          );
+        } else {
+          const apiKey = data.anthropic_api_key as string;
+          const res = await chat(
+            apiKey,
+            settings.model,
+            system,
+            [{ role: "user", content: user }],
+            800
+          );
+          answerMd = res.text;
+          meta.setText(
+            `候補 ${candidates.length} 件 / API ${settings.model} / 入力 ${res.inputTokens}t 出力 ${res.outputTokens}t`
+          );
+        }
         result.empty();
         const md = result.createDiv({ cls: "nd-ai-md" });
-        await MarkdownRenderer.render(ctx.app, res.text, md, ctx.sourcePath, ctx.parent);
+        await MarkdownRenderer.render(ctx.app, answerMd, md, ctx.sourcePath, ctx.parent);
       } catch (e) {
         meta.empty();
         result.empty();
@@ -109,7 +139,25 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("モデル")
+      .setName("バックエンド")
+      .setDesc("claude-code = `claude -p` 経由 (Pro/Maxサブスク・APIキー不要・desktop限定) / api = Anthropic API 直叩き")
+      .addDropdown((d) =>
+        d
+          .addOption("claude-code", "claude -p (subscription)")
+          .addOption("api", "Anthropic API (key)")
+          .setValue(settings.backend)
+          .onChange((v) => onChange({ ...settings, backend: v as Backend }))
+      );
+    new Setting(container)
+      .setName("claude コマンド (claude-code backend用)")
+      .setDesc('PATHに通ってる名前 or 絶対パス。デフォルト "claude"')
+      .addText((t) =>
+        t.setValue(settings.claudeCmd).onChange((v) =>
+          onChange({ ...settings, claudeCmd: v.trim() || "claude" })
+        )
+      );
+    new Setting(container)
+      .setName("モデル (api backendのみ)")
       .setDesc("claude-haiku-4-5-20251001 推奨 (安価)。賢く欲しければ claude-sonnet-4-6 等")
       .addText((t) => t.setValue(settings.model).onChange((v) => onChange({ ...settings, model: v.trim() })));
     new Setting(container)
