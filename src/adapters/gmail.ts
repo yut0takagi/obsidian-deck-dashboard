@@ -385,3 +385,26 @@ export async function getAttachment(
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
+
+// ---------- draft API ----------
+
+export interface CreateDraftResult {
+  draftId: string;
+  messageId: string;
+  threadId: string;
+}
+
+export async function createDraft(
+  oauth: GoogleOAuth,
+  input: DraftInput
+): Promise<CreateDraftResult> {
+  const raw = base64UrlEncode(buildMimeMessage(input));
+  const message: any = { raw };
+  if (input.threadId) message.threadId = input.threadId;
+  const json = await authed(oauth, "/drafts", { method: "POST", body: { message } });
+  return {
+    draftId: json.id ?? "",
+    messageId: json.message?.id ?? "",
+    threadId: json.message?.threadId ?? input.threadId ?? "",
+  };
+}
