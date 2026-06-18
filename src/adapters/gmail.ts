@@ -408,3 +408,33 @@ export async function createDraft(
     threadId: json.message?.threadId ?? input.threadId ?? "",
   };
 }
+
+// ---------- reply helpers (pure) ----------
+
+export interface ReplyFields {
+  to: string;
+  subject: string;
+  inReplyTo: string;
+  references: string;
+  threadId: string;
+}
+
+export function buildReplyFields(m: GmailMessage): ReplyFields {
+  const subject = /^re:/i.test(m.subject.trim()) ? m.subject : `Re: ${m.subject}`;
+  const references = m.references ? `${m.references} ${m.messageIdHeader}`.trim() : m.messageIdHeader;
+  return {
+    to: m.from,
+    subject,
+    inReplyTo: m.messageIdHeader,
+    references,
+    threadId: m.threadId,
+  };
+}
+
+export function quoteForReply(m: GmailMessage): string {
+  const quoted = m.bodyText
+    .split("\n")
+    .map((line) => `> ${line}`)
+    .join("\n");
+  return `\n\nOn ${m.date.toLocaleString()}, ${m.from} wrote:\n${quoted}`;
+}
