@@ -270,21 +270,41 @@ function stdBase64(input: string | Uint8Array): string {
   return typeof input === "string" ? utf8ToBase64(input) : bytesToBase64(input);
 }
 
+/** Strip CR/LF from a header value to prevent header injection. */
+function sanitizeHeader(v: string): string {
+  return v.replace(/[\r\n]+/g, " ").trim();
+}
+
+/** Remove characters that could break out of a quoted MIME parameter or inject headers. */
+function sanitizeFilename(name: string): string {
+  return name.replace(/[\r\n"\\]+/g, "").trim() || "attachment";
+}
+
+/** Allow only a well-formed type/subtype token; otherwise fall back to a safe default. */
+function sanitizeMimeType(mime: string): string {
+  return /^[\w.+-]+\/[\w.+-]+$/.test(mime) ? mime : "application/octet-stream";
+}
+
+/** Wrap base64 output to 76-char lines per RFC 2045. */
+function wrapBase64(b64: string): string {
+  return b64.replace(/.{1,76}/g, "$&\r\n").trimEnd();
+}
+
 export function buildMimeMessage(input: DraftInput, boundary = `b_${Date.now().toString(36)}`): string {
   const headerLines: string[] = [];
-  if (input.from) headerLines.push(`From: ${input.from}`);
-  headerLines.push(`To: ${input.to}`);
-  if (input.cc) headerLines.push(`Cc: ${input.cc}`);
-  headerLines.push(`Subject: ${encodeRfc2047(input.subject)}`);
-  if (input.inReplyTo) headerLines.push(`In-Reply-To: ${input.inReplyTo}`);
-  if (input.references) headerLines.push(`References: ${input.references}`);
+  if (input.from) headerLines.push(`From: ${sanitizeHeader(input.from)}`);
+  headerLines.push(`To: ${sanitizeHeader(input.to)}`);
+  if (input.cc) headerLines.push(`Cc: ${sanitizeHeader(input.cc)}`);
+  headerLines.push(`Subject: ${encodeRfc2047(sanitizeHeader(input.subject))}`);
+  if (input.inReplyTo) headerLines.push(`In-Reply-To: ${sanitizeHeader(input.inReplyTo)}`);
+  if (input.references) headerLines.push(`References: ${sanitizeHeader(input.references)}`);
   headerLines.push("MIME-Version: 1.0");
 
   const atts = input.attachments ?? [];
   if (atts.length === 0) {
     headerLines.push('Content-Type: text/plain; charset="UTF-8"');
     headerLines.push("Content-Transfer-Encoding: base64");
-    return headerLines.join("\r\n") + "\r\n\r\n" + stdBase64(input.bodyText);
+    return headerLines.join("\r\n") + "\r\n\r\n" + wrapBase64(stdBase64(input.bodyText));
   }
 
   headerLines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
@@ -293,15 +313,17 @@ export function buildMimeMessage(input: DraftInput, boundary = `b_${Date.now().t
     `--${boundary}\r\n` +
       'Content-Type: text/plain; charset="UTF-8"\r\n' +
       "Content-Transfer-Encoding: base64\r\n\r\n" +
-      stdBase64(input.bodyText)
+      wrapBase64(stdBase64(input.bodyText))
   );
   for (const a of atts) {
+    const fname = sanitizeFilename(a.filename);
+    const ctype = sanitizeMimeType(a.mimeType);
     parts.push(
       `--${boundary}\r\n` +
-        `Content-Type: ${a.mimeType}; name="${a.filename}"\r\n` +
-        `Content-Disposition: attachment; filename="${a.filename}"\r\n` +
+        `Content-Type: ${ctype}; name="${fname}"\r\n` +
+        `Content-Disposition: attachment; filename="${fname}"\r\n` +
         "Content-Transfer-Encoding: base64\r\n\r\n" +
-        stdBase64(a.data)
+        wrapBase64(stdBase64(a.data))
     );
   }
   return headerLines.join("\r\n") + "\r\n\r\n" + parts.join("\r\n") + `\r\n--${boundary}--`;

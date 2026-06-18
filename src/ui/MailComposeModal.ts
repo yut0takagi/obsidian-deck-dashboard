@@ -74,8 +74,12 @@ export class MailComposeModal extends Modal {
         const url = result.messageId
           ? gmailDraftUrl(email, result.messageId)
           : gmailDraftsListUrl(email);
-        window.open(url, "_blank");
-        new Notice("Gmail の下書きを開きました。内容を確認して送信してください。");
+        const win = window.open(url, "_blank");
+        if (win) {
+          new Notice("Gmail の下書きを開きました。内容を確認して送信してください。");
+        } else {
+          new Notice(`下書きを作成しました。Gmail のドラフトを開いてください: ${url}`);
+        }
         this.close();
       } catch (e) {
         new Notice(`下書き作成失敗: ${(e as Error).message}`);
