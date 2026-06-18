@@ -19,7 +19,20 @@ interface PluginData {
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
-const SCOPE = "https://www.googleapis.com/auth/calendar.readonly";
+const SCOPES = [
+  "https://www.googleapis.com/auth/calendar.readonly",
+  "https://www.googleapis.com/auth/spreadsheets",
+  "https://www.googleapis.com/auth/drive.file",
+  "https://www.googleapis.com/auth/gmail.modify",
+] as const;
+const SCOPE = SCOPES.join(" ");
+
+export function hasScope(stored: StoredTokens | null, requiredScope: string): boolean {
+  if (!stored) return false;
+  return stored.scope.split(/\s+/).includes(requiredScope);
+}
+
+export const REQUIRED_SCOPES = SCOPES;
 
 export class GoogleOAuth {
   constructor(private plugin: Plugin) {}
