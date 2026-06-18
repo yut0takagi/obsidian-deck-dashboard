@@ -197,3 +197,82 @@ export function summarizeThread(thread: any): GmailThreadSummary {
     messageCount: messages.length,
   };
 }
+
+// ---------- read API ----------
+
+export async function getProfile(oauth: GoogleOAuth): Promise<{ emailAddress: string }> {
+  const json = await authed(oauth, "/profile");
+  return { emailAddress: json.emailAddress ?? "" };
+}
+
+export async function listThreads(
+  oauth: GoogleOAuth,
+  query: string,
+  maxResults = 25
+): Promise<GmailThreadSummary[]> {
+  const params = new URLSearchParams({
+    q: query || "in:inbox",
+    maxResults: String(maxResults),
+  }).toString();
+  const list = await authed(oauth, `/threads?${params}`);
+  const ids: string[] = (list.threads ?? []).map((t: any) => t.id);
+  const summaries: GmailThreadSummary[] = [];
+  for (const id of ids) {
+    const meta = await authed(
+      oauth,
+      `/threads/${id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`
+    );
+    summaries.push(summarizeThread(meta));
+  }
+  return summaries;
+}
+
+export async function getThread(oauth: GoogleOAuth, threadId: string): Promise<GmailThread> {
+  const json = await authed(oauth, `/threads/${threadId}?format=full`);
+  return {
+    id: json.id ?? threadId,
+    messages: (json.messages ?? []).map((m: any) => parseMessage(m)),
+  };
+}
+
+export async function listLabels(oauth: GoogleOAuth): Promise<GmailLabel[]> {
+  const json = await authed(oauth, "/labels");
+  return (json.labels ?? []).map((l: any) => ({
+    id: l.id,
+    name: l.name,
+    type: l.type ?? "user",
+  }));
+}
+
+export async function modifyMessageLabels(
+  oauth: GoogleOAuth,
+  messageId: string,
+  add: string[],
+  remove: string[]
+): Promise<void> {
+  await authed(oauth, `/messages/${messageId}/modify`, {
+    method: "POST",
+    body: { addLabelIds: add, removeLabelIds: remove },
+  });
+}
+
+export async function trashMessage(oauth: GoogleOAuth, messageId: string): Promise<void> {
+  await authed(oauth, `/messages/${messageId}/trash`, { method: "POST" });
+}
+
+export async function getAttachment(
+  oauth: GoogleOAuth,
+  messageId: string,
+  attachmentId: string
+): Promise<Uint8Array> {
+  const json = await authed(
+    oauth,
+    `/messages/${messageId}/attachments/${attachmentId}`
+  );
+  const b64 = (json.data ?? "").replace(/-/g, "+").replace(/_/g, "/");
+  if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(b64, "base64"));
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
