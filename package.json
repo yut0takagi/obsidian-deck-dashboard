@@ -1,7 +1,7 @@
 {
-  "name": "obsidian-notion-dashboard",
+  "name": "obsidian-deck-dashboard",
   "version": "0.1.0",
-  "description": "Notion-style dashboard plugin for Obsidian",
+  "description": "Composable dashboard plugin for Obsidian",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",

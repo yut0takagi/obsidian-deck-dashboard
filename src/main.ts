@@ -13,7 +13,7 @@ import { AISessionListModal } from "./ui/AISessionListModal";
 import { AutoSyncWatcher } from "./sync/autoSyncWatcher";
 import { SyncSettingsTab } from "./ui/SyncSettingsTab";
 
-export default class NotionDashboardPlugin extends Plugin {
+export default class DeckPlugin extends Plugin {
   private aiStatusBar: HTMLElement | null = null;
   private aiUnsubscribe: (() => void) | null = null;
 
@@ -27,15 +27,15 @@ export default class NotionDashboardPlugin extends Plugin {
     registerCommands(this);
 
     this.addRibbonIcon("layout-dashboard", "Open home dashboard", () => {
-      (this.app as any).commands.executeCommandById("notion-dashboard:open-home");
+      (this.app as any).commands.executeCommandById("deck-dashboard:open-home");
     });
     this.addRibbonIcon("mail", "メールを開く", () => {
-      (this.app as any).commands.executeCommandById("notion-dashboard:open-mail");
+      (this.app as any).commands.executeCommandById("deck-dashboard:open-mail");
     });
 
     this.installAIStatusBar();
 
-    // Settings tab (Settings → Community plugins → Notion Dashboard)
+    // Settings tab (Settings → Community plugins → Deck)
     this.addSettingTab(new SyncSettingsTab(this.app, this));
 
     // Auto-sync watcher (タスク/詳細/*.md modifications → debounced Sheets sync)

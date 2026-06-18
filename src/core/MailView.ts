@@ -161,7 +161,7 @@ export class MailView extends ItemView {
       this.listEl.empty();
       const empty = this.listEl.createDiv({ cls: "nd-empty" });
       empty.createEl("p", {
-        text: "Gmail の認証が必要です。設定 → Notion Dashboard → 「再認証」を実行してください。",
+        text: "Gmail の認証が必要です。設定 → Deck → 「再認証」を実行してください。",
       });
       return false;
     }

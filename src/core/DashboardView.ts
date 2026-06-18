@@ -101,7 +101,7 @@ export class DashboardView extends TextFileView {
   private render(): void {
     const container = this.containerEl.children[1] as HTMLElement;
     container.empty();
-    container.addClass("notion-dashboard-view");
+    container.addClass("deck-dashboard-view");
 
     const header = container.createDiv({ cls: "nd-header" });
     const titleEl = header.createEl("h1", { cls: "nd-title", text: this.dashboard.title });

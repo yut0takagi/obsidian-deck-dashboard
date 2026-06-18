@@ -108,7 +108,7 @@ export function registerCommands(plugin: Plugin): void {
         );
         new Notice(`カレンダー一覧 (${cals.length}件) — コンソールに出力`);
         // eslint-disable-next-line no-console
-        console.log("[Notion Dashboard] Google Calendars:\n" + lines.join("\n\n"));
+        console.log("[Deck] Google Calendars:\n" + lines.join("\n\n"));
       } catch (e) {
         new Notice(`取得失敗: ${(e as Error).message}`);
       }
@@ -124,7 +124,7 @@ export function registerCommands(plugin: Plugin): void {
         const cfg = await sync.setupSheet("personal");
         if (cfg.spreadsheetUrl) {
           // eslint-disable-next-line no-console
-          console.log("[Notion Dashboard] Personal Sheets URL:", cfg.spreadsheetUrl);
+          console.log("[Deck] Personal Sheets URL:", cfg.spreadsheetUrl);
         }
       } catch (e) {
         new Notice(`Setup失敗: ${(e as Error).message}`);
@@ -141,7 +141,7 @@ export function registerCommands(plugin: Plugin): void {
         const cfg = await sync.setupSheet("org");
         if (cfg.spreadsheetUrl) {
           // eslint-disable-next-line no-console
-          console.log("[Notion Dashboard] Org Sheets URL:", cfg.spreadsheetUrl);
+          console.log("[Deck] Org Sheets URL:", cfg.spreadsheetUrl);
         }
       } catch (e) {
         new Notice(`Setup失敗: ${(e as Error).message}`);
@@ -168,7 +168,7 @@ export function registerCommands(plugin: Plugin): void {
         }
         new Notice(`同期完了: ${parts.join(" / ") || "対象なし"}`);
         // eslint-disable-next-line no-console
-        console.log("[Notion Dashboard] Sync report:", results);
+        console.log("[Deck] Sync report:", results);
       } catch (e) {
         new Notice(`同期失敗: ${(e as Error).message}`);
       }
@@ -230,7 +230,7 @@ export function registerCommands(plugin: Plugin): void {
         lines.push(`自動同期: ${(await watcher.isEnabled()) ? "ON" : "OFF"}`);
         new Notice(lines.join("\n"));
         // eslint-disable-next-line no-console
-        console.log("[Notion Dashboard] Status:", cfg);
+        console.log("[Deck] Status:", cfg);
       } catch (e) {
         new Notice(`取得失敗: ${(e as Error).message}`);
       }

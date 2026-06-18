@@ -35,7 +35,7 @@ export const mailWidget: WidgetDefinition<Settings> = {
     const tokens = await oauth.getTokens();
     if (!hasScope(tokens, GMAIL_SCOPE)) {
       const empty = el.createDiv({ cls: "nd-empty" });
-      empty.createEl("p", { text: "Gmail 認証が必要です（設定 → Notion Dashboard → 再認証）。" });
+      empty.createEl("p", { text: "Gmail 認証が必要です（設定 → Deck → 再認証）。" });
       return;
     }
 

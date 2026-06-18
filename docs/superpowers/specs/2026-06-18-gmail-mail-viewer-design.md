@@ -1,7 +1,7 @@
 # Gmail メールビューワー 設計書
 
 - **日付**: 2026-06-18
-- **対象プラグイン**: Notion Dashboard (obsidian-notion-dashboard)
+- **対象プラグイン**: Deck (obsidian-deck-dashboard)
 - **目的**: Obsidian プラグイン内で「メールを確認・作成・送信」できる Gmail クライアントを追加する
 
 ---

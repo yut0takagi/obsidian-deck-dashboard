@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Obsidian の Notion Dashboard プラグインに、Gmail を「確認・作成・送信(ブラウザ確認)」できるメールクライアントを追加する。
+**Goal:** Obsidian の Deck プラグインに、Gmail を「確認・作成・送信(ブラウザ確認)」できるメールクライアントを追加する。
 
 **Architecture:** 既存の `GoogleOAuth`（PKCE loopback）に `gmail.modify` スコープを足し、ステートレスな `adapters/gmail.ts`（`requestUrl` + Bearer）で Gmail REST v1 を叩く。UI はハイブリッド（ダッシュボード `MailWidget` ＋ 専用 `ItemView` の `MailView`）。送信はプラグインから直接行わず、Gmail 下書き(`drafts.create`)を作って **ブラウザの Gmail を開いて人が確認・送信**。返信は「スレッド要約 + vault(議事録/ナレッジ) RAG → Claude で返信ドラフト生成」。
 
@@ -849,7 +849,7 @@ git commit -m "feat(mail): gmail read api (threads, labels, modify, attachments)
 `src/core/constants.ts` の末尾に追加:
 
 ```ts
-export const VIEW_TYPE_MAIL = "notion-dashboard-mail-view";
+export const VIEW_TYPE_MAIL = "deck-dashboard-mail-view";
 ```
 
 - [ ] **Step 2: MailView を作成**
@@ -934,7 +934,7 @@ export class MailView extends ItemView {
       this.listEl.empty();
       const empty = this.listEl.createDiv({ cls: "nd-empty" });
       empty.createEl("p", {
-        text: "Gmail の認証が必要です。設定 → Notion Dashboard → 「再認証」を実行してください。",
+        text: "Gmail の認証が必要です。設定 → Deck → 「再認証」を実行してください。",
       });
       return false;
     }
@@ -1033,7 +1033,7 @@ import { VIEW_TYPE_MAIL } from "./core/constants";
 
 ```ts
     this.addRibbonIcon("mail", "メールを開く", () => {
-      (this.app as any).commands.executeCommandById("notion-dashboard:open-mail");
+      (this.app as any).commands.executeCommandById("deck-dashboard:open-mail");
     });
 ```
 
@@ -1125,7 +1125,7 @@ export const mailWidget: WidgetDefinition<Settings> = {
     const tokens = await oauth.getTokens();
     if (!hasScope(tokens, GMAIL_SCOPE)) {
       const empty = el.createDiv({ cls: "nd-empty" });
-      empty.createEl("p", { text: "Gmail 認証が必要です（設定 → Notion Dashboard → 再認証）。" });
+      empty.createEl("p", { text: "Gmail 認証が必要です（設定 → Deck → 再認証）。" });
       return;
     }
 

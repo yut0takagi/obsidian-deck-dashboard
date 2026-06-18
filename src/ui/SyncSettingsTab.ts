@@ -6,7 +6,7 @@ import { AutoSyncWatcher } from "../sync/autoSyncWatcher";
 import { loadMailConfig, saveMailConfig } from "../core/mailConfig";
 
 /**
- * Settings tab under "Notion Dashboard" in Obsidian → Settings → Community plugins.
+ * Settings tab under "Deck" in Obsidian → Settings → Community plugins.
  * Surfaces the same operations as the command palette: authenticate, set up
  * personal/org spreadsheets, kick off a sync, toggle auto-sync, configure
  * self-owner.
@@ -19,7 +19,7 @@ export class SyncSettingsTab extends PluginSettingTab {
   async display(): Promise<void> {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Notion Dashboard" });
+    containerEl.createEl("h2", { text: "Deck" });
 
     await this.renderGoogleAuthSection(containerEl);
     await this.renderSelfOwnerSection(containerEl);
