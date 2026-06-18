@@ -1060,11 +1060,12 @@
 /* AI Delegation Modal */
 .modal.nd-ai-delegate-modal-wrap {
   width: 95vw;
-  max-width: 1200px;
+  min-width: 720px;
+  max-width: 1400px;
 }
 
 .modal.nd-ai-delegate-modal-wrap .modal-content {
-  max-height: 85vh;
+  max-height: 88vh;
   overflow-y: auto;
 }
 
@@ -1090,7 +1091,7 @@
 
 .nd-ai-delegate-prompt {
   width: 100%;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 4px;
   background: var(--background-primary);
@@ -1098,8 +1099,8 @@
   font-family: var(--font-monospace);
   font-size: 0.85em;
   resize: vertical;
-  min-height: 10em;
-  max-height: 24em;
+  min-height: 14em;
+  max-height: 32em;
   margin-bottom: 12px;
   box-sizing: border-box;
 }
@@ -1118,15 +1119,15 @@
 }
 
 .nd-ai-delegate-log {
-  max-height: 360px;
+  max-height: 480px;
   overflow-y: auto;
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 4px;
-  padding: 8px;
+  padding: 10px;
   font-family: var(--font-monospace);
-  font-size: 0.78em;
-  line-height: 1.5;
+  font-size: 0.82em;
+  line-height: 1.55;
 }
 
 .nd-ai-log-line {
@@ -1173,6 +1174,106 @@
   color: var(--text-normal);
 }
 
+/* AI Session List Modal */
+.modal.nd-ai-list-modal-wrap {
+  width: 90vw;
+  min-width: 560px;
+  max-width: 900px;
+}
+
+.nd-ai-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.nd-ai-list-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+}
+
+.nd-ai-list-row.nd-ai-list-running {
+  border-left: 3px solid var(--interactive-accent);
+}
+
+.nd-ai-list-row.nd-ai-list-error {
+  border-left: 3px solid var(--text-error);
+}
+
+.nd-ai-list-row.nd-ai-list-completed {
+  border-left: 3px solid var(--text-success, var(--interactive-accent));
+}
+
+.nd-ai-list-row.nd-ai-list-cancelled {
+  border-left: 3px solid var(--text-muted);
+  opacity: 0.7;
+}
+
+.nd-ai-list-head {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.nd-ai-list-icon {
+  flex: 0 0 auto;
+  font-size: 1.1em;
+}
+
+.nd-ai-list-name {
+  flex: 1 1 auto;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nd-ai-list-meta {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: 0.85em;
+  font-family: var(--font-monospace);
+}
+
+.nd-ai-list-actions {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 6px;
+}
+
+.nd-ai-list-actions button {
+  cursor: pointer;
+}
+
+/* Status bar item for AI sessions */
+.nd-ai-statusbar {
+  cursor: pointer;
+  padding: 0 8px;
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+}
+
+.nd-ai-statusbar-empty {
+  opacity: 0.45;
+}
+
+.nd-ai-statusbar-running {
+  color: var(--interactive-accent);
+  font-weight: 600;
+}
+
+.nd-ai-statusbar:hover {
+  background: var(--background-modifier-hover);
+}
+
 /* Responsive */
 @media (max-width: 800px) {
   .nd-widget {
@@ -1182,3 +1283,68 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Member tabs (Kanban / Gantt — filter by 担当者) */
+.nd-member-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px 0 8px 0;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--background-modifier-border);
+  margin-bottom: 8px;
+}
+.nd-member-tab {
+  padding: 4px 12px;
+  font-size: 12px;
+  background: var(--background-secondary);
+  color: var(--text-muted);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.nd-member-tab:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+.nd-member-tab-active {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+  font-weight: 600;
+}
+.nd-member-tab-active:hover {
+  background: var(--interactive-accent-hover);
+  color: var(--text-on-accent);
+}
+
+/* ---- Mail viewer ---- */
+.nd-mail-view .nd-mail-toolbar { display: flex; gap: 8px; align-items: center; padding: 8px; border-bottom: 1px solid var(--background-modifier-border); }
+.nd-mail-view .nd-mail-search { flex: 1; }
+.nd-mail-view .nd-mail-label-filter { max-width: 140px; }
+.nd-mail-body { display: flex; height: calc(100% - 44px); }
+.nd-mail-list { width: 38%; overflow-y: auto; border-right: 1px solid var(--background-modifier-border); }
+.nd-mail-detail { flex: 1; overflow-y: auto; padding: 12px; }
+.nd-mail-row { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--background-modifier-border); }
+.nd-mail-row:hover { background: var(--background-modifier-hover); }
+.nd-mail-row.nd-mail-unread .nd-mail-subject { font-weight: 700; }
+.nd-mail-from { font-size: 0.85em; color: var(--text-muted); }
+.nd-mail-subject { font-size: 0.95em; }
+.nd-mail-snippet { font-size: 0.8em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nd-mail-msg { border: 1px solid var(--background-modifier-border); border-radius: 8px; padding: 10px; margin-bottom: 10px; }
+.nd-mail-msg-body { white-space: pre-wrap; word-break: break-word; font-family: inherit; }
+.nd-mail-msg-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.nd-mail-attachments { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.nd-mail-compose-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+.nd-mail-compose-label { width: 48px; color: var(--text-muted); }
+.nd-mail-compose-input { flex: 1; }
+.nd-mail-compose-body { width: 100%; }
+.nd-mail-compose-attrow { margin: 8px 0; }
+.nd-mail-compose-info { border: 1px solid var(--background-modifier-border); border-radius: 6px; padding: 8px; margin-bottom: 10px; background: var(--background-secondary); }
+.nd-mail-compose-info-label { font-size: 0.8em; margin-bottom: 4px; }
+.nd-mail-compose-info-body { white-space: pre-wrap; word-break: break-word; font-family: inherit; margin: 0; font-size: 0.85em; }
+.nd-widget-mail .nd-mail-widget-toolbar { display: flex; gap: 6px; margin-bottom: 6px; }
+.nd-widget-mail .nd-mail-widget-list { list-style: none; margin: 0; padding: 0; }
+.nd-widget-mail .nd-mail-widget-item { padding: 4px 6px; cursor: pointer; border-bottom: 1px solid var(--background-modifier-border); }
+.nd-widget-mail .nd-mail-widget-item:hover { background: var(--background-modifier-hover); }
+.nd-widget-mail .nd-mail-unread .nd-mail-subject { font-weight: 700; }
