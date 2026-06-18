@@ -25,7 +25,7 @@ export class MailView extends ItemView {
   private listEl!: HTMLElement;
   private detailEl!: HTMLElement;
   private pendingThreadId: string | null = null;
-  private currentThread: import("../adapters/gmail").GmailThread | null = null;
+  private currentThread: GmailThread | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: Plugin) {
     super(leaf);
@@ -104,9 +104,8 @@ export class MailView extends ItemView {
       const result = await generateReplyDraft(this.app, this.plugin, this.currentThread, this.config);
       notice.hide();
       const f = buildReplyFields(m);
-      const sources = result.sources.length
-        ? `\n\n[参照: ${result.sources.join(", ")}]`
-        : "";
+      const sourcesLine = result.sources.length ? `参照: ${result.sources.join(", ")}` : "参照: なし";
+      const banner = (result.summary ? `${result.summary}\n\n` : "") + sourcesLine;
       new MailComposeModal(this.app, this.plugin, {
         mode: "reply",
         to: f.to,
@@ -114,7 +113,8 @@ export class MailView extends ItemView {
         threadId: f.threadId,
         inReplyTo: f.inReplyTo,
         references: f.references,
-        bodyText: result.replyDraft + sources,
+        bodyText: result.replyDraft,
+        infoBanner: banner,
       }).open();
     } catch (e) {
       notice.hide();

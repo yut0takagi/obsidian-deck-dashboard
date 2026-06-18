@@ -17,6 +17,8 @@ export interface ComposeOptions {
   threadId?: string;
   inReplyTo?: string;
   references?: string;
+  /** Non-editable info shown above the form (e.g. AI summary + sources). NOT included in the sent mail. */
+  infoBanner?: string;
 }
 
 export class MailComposeModal extends Modal {
@@ -34,6 +36,15 @@ export class MailComposeModal extends Modal {
     contentEl.createEl("h3", {
       text: this.opts.mode === "reply" ? "返信" : this.opts.mode === "forward" ? "転送" : "新規作成",
     });
+
+    if (this.opts.infoBanner) {
+      const info = contentEl.createDiv({ cls: "nd-mail-compose-info" });
+      info.createEl("div", {
+        cls: "nd-mail-compose-info-label nd-muted",
+        text: "🤖 AI要約・参照（このメールには含まれません）",
+      });
+      info.createEl("pre", { cls: "nd-mail-compose-info-body", text: this.opts.infoBanner });
+    }
 
     const toInput = labeledInput(contentEl, "To", this.opts.to ?? "");
     const ccInput = labeledInput(contentEl, "Cc", this.opts.cc ?? "");

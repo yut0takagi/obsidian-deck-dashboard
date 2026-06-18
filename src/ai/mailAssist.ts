@@ -33,6 +33,11 @@ function buildRagQuery(thread: GmailThread): string {
   return `${subject} ${senderName(last?.from ?? "")}`.trim();
 }
 
+// NOTE: email bodies are untrusted (attacker-controlled) and are concatenated into the
+// prompt below. This is acceptable ONLY because the output is a DRAFT that a human
+// reviews and manually sends via the Gmail web UI — there is no autonomous send. Do not
+// reuse this prompt path for any future auto-send feature without sanitizing input and
+// hardening against delimiter/instruction injection.
 function buildPrompt(thread: GmailThread, candidates: Candidate[]): string {
   const ragBlock = candidates.length
     ? candidates.map((c, i) => `[${i + 1}] ${c.path}\n${c.excerpt.replace(/\n+/g, " ").trim()}`).join("\n\n")
