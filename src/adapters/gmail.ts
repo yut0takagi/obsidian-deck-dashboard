@@ -431,6 +431,16 @@ export async function createDraft(
   };
 }
 
+// ---------- query compose (pure) ----------
+
+export function composeQuery(base: string, term: string, label?: string): string {
+  const parts: string[] = [];
+  if (base.trim()) parts.push(base.trim());
+  if (label && label.trim()) parts.push(`label:${label.trim()}`);
+  if (term.trim()) parts.push(term.trim());
+  return parts.join(" ") || "in:inbox";
+}
+
 // ---------- reply helpers (pure) ----------
 
 export interface ReplyFields {

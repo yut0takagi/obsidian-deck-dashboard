@@ -8,6 +8,7 @@ import {
   senderDisplayName,
   buildReplyFields,
   quoteForReply,
+  composeQuery,
   type GmailThreadSummary,
   type GmailThread,
   type GmailMessage,
@@ -26,6 +27,8 @@ export class MailView extends ItemView {
   private detailEl!: HTMLElement;
   private pendingThreadId: string | null = null;
   private currentThread: GmailThread | null = null;
+  private searchTerm = "";
+  private labelFilter = "";
 
   constructor(leaf: WorkspaceLeaf, plugin: Plugin) {
     super(leaf);
@@ -54,6 +57,18 @@ export class MailView extends ItemView {
     refreshBtn.addEventListener("click", () => void this.refresh());
     const composeBtn = toolbar.createEl("button", { text: "✏ 新規作成", cls: "mod-cta" });
     composeBtn.addEventListener("click", () => this.openCompose());
+
+    const searchInput = toolbar.createEl("input", {
+      type: "text",
+      cls: "nd-mail-search",
+      attr: { placeholder: "🔍 検索（Enterで実行）" },
+    });
+    searchInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        this.searchTerm = searchInput.value;
+        void this.refresh();
+      }
+    });
 
     const body = root.createDiv({ cls: "nd-mail-body" });
     this.listEl = body.createDiv({ cls: "nd-mail-list" });
@@ -141,7 +156,8 @@ export class MailView extends ItemView {
     this.listEl.empty();
     const status = this.listEl.createDiv({ cls: "nd-muted", text: "読み込み中…" });
     try {
-      const threads = await listThreads(this.oauth, this.config.query, this.config.maxItems);
+      const q = composeQuery(this.config.query, this.searchTerm, this.labelFilter);
+      const threads = await listThreads(this.oauth, q, this.config.maxItems);
       status.remove();
       if (threads.length === 0) {
         this.listEl.createEl("p", { cls: "nd-empty", text: "メールはありません 🎉" });
