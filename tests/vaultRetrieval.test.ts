@@ -5,22 +5,22 @@ const { tokenize, scoreFilename, scoreContent, stripFrontmatter } = __test;
 
 describe("tokenize", () => {
   it("2文字以上のトークンに分割し記号を除去", () => {
-    expect(tokenize("見積もり, ロリエ案件")).toContain("ロリエ案件");
+    expect(tokenize("見積もり, サンプル案件")).toContain("サンプル案件");
     expect(tokenize("a b cd")).toEqual(["cd"]); // 1文字は除外
   });
 });
 
 describe("scoreFilename", () => {
   it("パスにトークンが含まれると加点", () => {
-    expect(scoreFilename("議事録/ロリエ.md", ["ロリエ"])).toBe(1);
-    expect(scoreFilename("other.md", ["ロリエ"])).toBe(0);
+    expect(scoreFilename("議事録/サンプル.md", ["サンプル"])).toBe(1);
+    expect(scoreFilename("other.md", ["サンプル"])).toBe(0);
   });
 });
 
 describe("scoreContent", () => {
   it("出現回数を上限5でスコア", () => {
-    expect(scoreContent("ロリエ ロリエ ロリエ", ["ロリエ"])).toBe(3);
-    expect(scoreContent("x".repeat(0), ["ロリエ"])).toBe(0);
+    expect(scoreContent("サンプル サンプル サンプル", ["サンプル"])).toBe(3);
+    expect(scoreContent("x".repeat(0), ["サンプル"])).toBe(0);
   });
 });
 

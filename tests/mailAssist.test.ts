@@ -13,7 +13,7 @@ const thread: GmailThread = {
       from: "Tanaka <tanaka@example.com>",
       to: "me@example.com",
       cc: "",
-      subject: "ロリエ案件の見積もり",
+      subject: "サンプル案件の見積もり",
       date: new Date("2026-06-17T10:30:00+09:00"),
       snippet: "",
       bodyText: "見積もりをお願いします。",
@@ -37,17 +37,17 @@ describe("buildThreadText", () => {
 describe("buildRagQuery", () => {
   it("件名＋差出人名からクエリを作る", () => {
     const q = buildRagQuery(thread);
-    expect(q).toContain("ロリエ案件");
+    expect(q).toContain("サンプル案件");
     expect(q).toContain("Tanaka");
   });
 });
 
 describe("buildPrompt", () => {
   it("スレッド・vault背景・指示を含む", () => {
-    const cands: Candidate[] = [{ path: "議事録/ロリエ.md", excerpt: "前回は単価で揉めた", score: 9 }];
+    const cands: Candidate[] = [{ path: "議事録/サンプル.md", excerpt: "前回は単価で揉めた", score: 9 }];
     const p = buildPrompt(thread, cands);
     expect(p).toContain("見積もりをお願いします。");
-    expect(p).toContain("議事録/ロリエ.md");
+    expect(p).toContain("議事録/サンプル.md");
     expect(p).toContain("前回は単価で揉めた");
     expect(p).toMatch(/要約/);
     expect(p).toMatch(/返信ドラフト/);

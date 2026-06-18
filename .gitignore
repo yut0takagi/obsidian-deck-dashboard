@@ -3,3 +3,7 @@ main.js
 *.log
 .DS_Store
 .vscode/
+
+# Plugin runtime data — contains Google OAuth client_secret, access/refresh tokens,
+# API keys, and sync config. NEVER commit.
+data.json

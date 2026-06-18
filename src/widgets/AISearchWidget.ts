@@ -66,7 +66,7 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
       cls: "nd-ai-input",
       attr: {
         rows: "2",
-        placeholder: "聞きたいことを自然な日本語で… (例: 先週のロリエ案件の議論ポイント) — ⌘+Enter で送信",
+        placeholder: "聞きたいことを自然な日本語で… (例: 先週のサンプル案件の議論ポイント) — ⌘+Enter で送信",
       },
     });
     const goBtn = form.createEl("button", { text: "✨ 検索 (⌘+↵)", cls: "mod-cta" });
