@@ -271,8 +271,12 @@ export class MailView extends ItemView {
               const link = document.createElement("a");
               link.href = url;
               link.download = a.filename;
+              document.body.appendChild(link);
               link.click();
-              URL.revokeObjectURL(url);
+              link.remove();
+              // Defer revoke: link.click() download is async in Electron/Chromium;
+              // revoking synchronously can cancel the download.
+              setTimeout(() => URL.revokeObjectURL(url), 10_000);
             } catch (e) {
               new Notice(`添付取得失敗: ${(e as Error).message}`);
             }
