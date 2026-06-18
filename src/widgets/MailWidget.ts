@@ -1,7 +1,7 @@
 import { Setting } from "obsidian";
 import type { WidgetDefinition } from "./types";
 import { GoogleOAuth, hasScope } from "../auth/googleOAuth";
-import { listThreads, type GmailThreadSummary } from "../adapters/gmail";
+import { listThreads, senderDisplayName, type GmailThreadSummary } from "../adapters/gmail";
 import { MailView } from "../core/MailView";
 import { VIEW_TYPE_MAIL } from "../core/constants";
 
@@ -58,7 +58,7 @@ export const mailWidget: WidgetDefinition<Settings> = {
         const li = ul.createEl("li", { cls: "nd-mail-widget-item" });
         if (t.unread) li.addClass("nd-mail-unread");
         li.createEl("span", { cls: "nd-mail-subject", text: t.subject });
-        li.createEl("span", { cls: "nd-mail-from nd-muted", text: ` — ${shortFrom(t)}` });
+        li.createEl("span", { cls: "nd-mail-from nd-muted", text: ` — ${senderDisplayName(t.from)}` });
         li.addEventListener("click", () => void openMailViewAt(ctx.app, t.id));
       }
     } catch (e) {
@@ -85,8 +85,3 @@ export const mailWidget: WidgetDefinition<Settings> = {
       );
   },
 };
-
-function shortFrom(t: GmailThreadSummary): string {
-  const m = t.from.match(/^\s*"?([^"<]+?)"?\s*</);
-  return (m ? m[1] : t.from).trim();
-}

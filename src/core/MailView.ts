@@ -5,6 +5,7 @@ import {
   listThreads,
   getThread,
   modifyMessageLabels,
+  senderDisplayName,
   type GmailThreadSummary,
   type GmailThread,
 } from "../adapters/gmail";
@@ -108,7 +109,7 @@ export class MailView extends ItemView {
   private renderRow(t: GmailThreadSummary): void {
     const row = this.listEl.createDiv({ cls: "nd-mail-row" });
     if (t.unread) row.addClass("nd-mail-unread");
-    row.createEl("div", { cls: "nd-mail-from", text: senderName(t.from) });
+    row.createEl("div", { cls: "nd-mail-from", text: senderDisplayName(t.from) });
     row.createEl("div", { cls: "nd-mail-subject", text: t.subject });
     row.createEl("div", { cls: "nd-mail-snippet nd-muted", text: t.snippet });
     row.addEventListener("click", () => void this.showThread(t.id));
@@ -124,7 +125,9 @@ export class MailView extends ItemView {
       // 既読化: 未読メッセージから UNREAD を外す
       for (const m of thread.messages) {
         if (m.labelIds.includes("UNREAD")) {
-          void modifyMessageLabels(this.oauth, m.id, [], ["UNREAD"]);
+          void modifyMessageLabels(this.oauth, m.id, [], ["UNREAD"]).catch(() => {
+            /* 既読化失敗は致命的でないため握りつぶす（次回更新で再試行される） */
+          });
         }
       }
     } catch (e) {
@@ -147,9 +150,4 @@ export class MailView extends ItemView {
       }
     }
   }
-}
-
-function senderName(from: string): string {
-  const m = from.match(/^\s*"?([^"<]+?)"?\s*</);
-  return (m ? m[1] : from).trim();
 }

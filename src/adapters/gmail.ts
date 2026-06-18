@@ -35,6 +35,56 @@ export function encodeRfc2047(value: string): string {
   return `=?UTF-8?B?${utf8ToBase64(value)}?=`;
 }
 
+function base64ToBytes(b64: string): Uint8Array {
+  const std = b64.replace(/-/g, "+").replace(/_/g, "/");
+  if (typeof Buffer !== "undefined") return new Uint8Array(Buffer.from(std, "base64"));
+  const bin = atob(std);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
+function bytesToUtf8(bytes: Uint8Array): string {
+  if (typeof Buffer !== "undefined") return Buffer.from(bytes).toString("utf-8");
+  return new TextDecoder("utf-8").decode(bytes);
+}
+
+/** Decode RFC 2047 encoded-words (=?UTF-8?B?..?= / =?UTF-8?Q?..?=) found in header values. */
+export function decodeRfc2047(value: string): string {
+  if (!value || !value.includes("=?")) return value;
+  // RFC2047: whitespace between adjacent encoded-words is ignored.
+  const joined = value.replace(/(=\?[^?]+\?[BbQq]\?[^?]*\?=)\s+(?==\?)/g, "$1");
+  return joined.replace(/=\?([^?]+)\?([BbQq])\?([^?]*)\?=/g, (_m, _charset, enc, text) => {
+    try {
+      let bytes: Uint8Array;
+      if (enc.toUpperCase() === "B") {
+        bytes = base64ToBytes(text);
+      } else {
+        const arr: number[] = [];
+        for (let i = 0; i < text.length; i++) {
+          const ch = text[i];
+          if (ch === "_") arr.push(0x20);
+          else if (ch === "=" && i + 2 < text.length) {
+            arr.push(parseInt(text.substr(i + 1, 2), 16));
+            i += 2;
+          } else arr.push(ch.charCodeAt(0));
+        }
+        bytes = new Uint8Array(arr);
+      }
+      return bytesToUtf8(bytes);
+    } catch {
+      return _m;
+    }
+  });
+}
+
+/** Extract a human display name from a From header (decoding RFC2047 first). */
+export function senderDisplayName(from: string): string {
+  const decoded = decodeRfc2047(from);
+  const m = decoded.match(/^\s*"?([^"<]+?)"?\s*</);
+  return (m ? m[1] : decoded).trim();
+}
+
 // ---------- gmail web urls (pure) ----------
 
 function mailBase(email: string): string {
@@ -73,8 +123,6 @@ async function authed(
   }
   return res.json;
 }
-
-export { authed as __authed };
 
 // ---------- types ----------
 
@@ -160,10 +208,10 @@ export function parseMessage(resource: any): GmailMessage {
   return {
     id: resource.id ?? "",
     threadId: resource.threadId ?? "",
-    from: getHeader(headers, "From"),
-    to: getHeader(headers, "To"),
-    cc: getHeader(headers, "Cc"),
-    subject: getHeader(headers, "Subject"),
+    from: decodeRfc2047(getHeader(headers, "From")),
+    to: decodeRfc2047(getHeader(headers, "To")),
+    cc: decodeRfc2047(getHeader(headers, "Cc")),
+    subject: decodeRfc2047(getHeader(headers, "Subject")),
     date: dateStr ? new Date(dateStr) : new Date(0),
     snippet: resource.snippet ?? "",
     bodyText: acc.text.join("\n").trim(),
@@ -189,8 +237,8 @@ export function summarizeThread(thread: any): GmailThreadSummary {
   const dateStr = getHeader(lastHeaders, "Date");
   return {
     id: thread.id ?? "",
-    subject: stripRe(getHeader(firstHeaders, "Subject")) || "(件名なし)",
-    from: getHeader(lastHeaders, "From"),
+    subject: stripRe(decodeRfc2047(getHeader(firstHeaders, "Subject"))) || "(件名なし)",
+    from: decodeRfc2047(getHeader(lastHeaders, "From")),
     date: dateStr ? new Date(dateStr) : new Date(0),
     snippet: thread.snippet ?? last?.snippet ?? "",
     unread,
@@ -216,15 +264,15 @@ export async function listThreads(
   }).toString();
   const list = await authed(oauth, `/threads?${params}`);
   const ids: string[] = (list.threads ?? []).map((t: any) => t.id);
-  const summaries: GmailThreadSummary[] = [];
-  for (const id of ids) {
-    const meta = await authed(
-      oauth,
-      `/threads/${id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`
-    );
-    summaries.push(summarizeThread(meta));
-  }
-  return summaries;
+  const metas = await Promise.all(
+    ids.map((id) =>
+      authed(
+        oauth,
+        `/threads/${id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`
+      )
+    )
+  );
+  return metas.map((meta) => summarizeThread(meta));
 }
 
 export async function getThread(oauth: GoogleOAuth, threadId: string): Promise<GmailThread> {
