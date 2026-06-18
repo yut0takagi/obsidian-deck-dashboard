@@ -6,6 +6,7 @@ import {
   gmailDraftUrl,
   gmailDraftsListUrl,
   type DraftInput,
+  type DraftAttachment,
 } from "../adapters/gmail";
 
 export interface ComposeOptions {
@@ -55,6 +56,20 @@ export class MailComposeModal extends Modal {
     });
     bodyInput.value = this.opts.bodyText ?? "";
 
+    const attachments: DraftAttachment[] = [];
+    const attRow = contentEl.createDiv({ cls: "nd-mail-compose-attrow" });
+    const fileInput = attRow.createEl("input", { type: "file", attr: { multiple: "true" } });
+    const attList = attRow.createDiv({ cls: "nd-muted" });
+    fileInput.addEventListener("change", async () => {
+      attachments.length = 0;
+      const files = Array.from(fileInput.files ?? []);
+      for (const file of files) {
+        const buf = new Uint8Array(await file.arrayBuffer());
+        attachments.push({ filename: file.name, mimeType: file.type || "application/octet-stream", data: buf });
+      }
+      attList.setText(attachments.length ? `📎 ${attachments.map((a) => a.filename).join(", ")}` : "");
+    });
+
     const buttons = contentEl.createDiv({ cls: "modal-button-container" });
     const cancel = buttons.createEl("button", { text: "キャンセル" });
     cancel.addEventListener("click", () => this.close());
@@ -79,6 +94,7 @@ export class MailComposeModal extends Modal {
           threadId: this.opts.threadId,
           inReplyTo: this.opts.inReplyTo,
           references: this.opts.references,
+          attachments: attachments.length ? attachments : undefined,
         };
         const result = await createDraft(this.oauth, input);
         const email = (await getProfile(this.oauth)).emailAddress;

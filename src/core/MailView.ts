@@ -4,6 +4,7 @@ import { GoogleOAuth, hasScope } from "../auth/googleOAuth";
 import {
   listThreads,
   getThread,
+  getAttachment,
   modifyMessageLabels,
   listLabels,
   trashMessage,
@@ -258,8 +259,25 @@ export class MailView extends ItemView {
         }
       });
       if (m.attachments.length > 0) {
-        const att = card.createDiv({ cls: "nd-mail-attachments nd-muted" });
-        att.setText(`📎 添付 ${m.attachments.length}件: ${m.attachments.map((a) => a.filename).join(", ")}`);
+        const att = card.createDiv({ cls: "nd-mail-attachments" });
+        att.createEl("span", { cls: "nd-muted", text: "📎 添付: " });
+        for (const a of m.attachments) {
+          const b = att.createEl("button", { text: `${a.filename} (${Math.round(a.size / 1024)}KB)` });
+          b.addEventListener("click", async () => {
+            try {
+              const bytes = await getAttachment(this.oauth, m.id, a.attachmentId);
+              const blob = new Blob([bytes], { type: a.mimeType });
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement("a");
+              link.href = url;
+              link.download = a.filename;
+              link.click();
+              URL.revokeObjectURL(url);
+            } catch (e) {
+              new Notice(`添付取得失敗: ${(e as Error).message}`);
+            }
+          });
+        }
       }
     }
   }
