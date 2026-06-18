@@ -171,6 +171,24 @@ export interface GmailLabel {
   type: string;
 }
 
+export interface DraftAttachment {
+  filename: string;
+  mimeType: string;
+  data: Uint8Array;
+}
+
+export interface DraftInput {
+  to: string;
+  cc?: string;
+  subject: string;
+  bodyText: string;
+  threadId?: string;
+  inReplyTo?: string;
+  references?: string;
+  from?: string;
+  attachments?: DraftAttachment[];
+}
+
 // ---------- parsers (pure) ----------
 
 export function getHeader(headers: any[], name: string): string {
@@ -244,6 +262,49 @@ export function summarizeThread(thread: any): GmailThreadSummary {
     unread,
     messageCount: messages.length,
   };
+}
+
+// ---------- MIME builder (pure) ----------
+
+function stdBase64(input: string | Uint8Array): string {
+  return typeof input === "string" ? utf8ToBase64(input) : bytesToBase64(input);
+}
+
+export function buildMimeMessage(input: DraftInput, boundary = `b_${Date.now().toString(36)}`): string {
+  const headerLines: string[] = [];
+  if (input.from) headerLines.push(`From: ${input.from}`);
+  headerLines.push(`To: ${input.to}`);
+  if (input.cc) headerLines.push(`Cc: ${input.cc}`);
+  headerLines.push(`Subject: ${encodeRfc2047(input.subject)}`);
+  if (input.inReplyTo) headerLines.push(`In-Reply-To: ${input.inReplyTo}`);
+  if (input.references) headerLines.push(`References: ${input.references}`);
+  headerLines.push("MIME-Version: 1.0");
+
+  const atts = input.attachments ?? [];
+  if (atts.length === 0) {
+    headerLines.push('Content-Type: text/plain; charset="UTF-8"');
+    headerLines.push("Content-Transfer-Encoding: base64");
+    return headerLines.join("\r\n") + "\r\n\r\n" + stdBase64(input.bodyText);
+  }
+
+  headerLines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+  const parts: string[] = [];
+  parts.push(
+    `--${boundary}\r\n` +
+      'Content-Type: text/plain; charset="UTF-8"\r\n' +
+      "Content-Transfer-Encoding: base64\r\n\r\n" +
+      stdBase64(input.bodyText)
+  );
+  for (const a of atts) {
+    parts.push(
+      `--${boundary}\r\n` +
+        `Content-Type: ${a.mimeType}; name="${a.filename}"\r\n` +
+        `Content-Disposition: attachment; filename="${a.filename}"\r\n` +
+        "Content-Transfer-Encoding: base64\r\n\r\n" +
+        stdBase64(a.data)
+    );
+  }
+  return headerLines.join("\r\n") + "\r\n\r\n" + parts.join("\r\n") + `\r\n--${boundary}--`;
 }
 
 // ---------- read API ----------
