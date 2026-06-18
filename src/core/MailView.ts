@@ -5,6 +5,8 @@ import {
   listThreads,
   getThread,
   modifyMessageLabels,
+  listLabels,
+  trashMessage,
   senderDisplayName,
   buildReplyFields,
   quoteForReply,
@@ -68,6 +70,21 @@ export class MailView extends ItemView {
         this.searchTerm = searchInput.value;
         void this.refresh();
       }
+    });
+
+    const labelSelect = toolbar.createEl("select", { cls: "nd-mail-label-filter" });
+    labelSelect.createEl("option", { text: "全ラベル", value: "" });
+    try {
+      const labels = await listLabels(this.oauth);
+      for (const l of labels.filter((x) => x.type === "user")) {
+        labelSelect.createEl("option", { text: l.name, value: l.name });
+      }
+    } catch {
+      /* ラベル取得失敗は無視（フィルタ無しで継続） */
+    }
+    labelSelect.addEventListener("change", () => {
+      this.labelFilter = labelSelect.value;
+      void this.refresh();
     });
 
     const body = root.createDiv({ cls: "nd-mail-body" });
@@ -220,6 +237,26 @@ export class MailView extends ItemView {
       fwdBtn.addEventListener("click", () => this.openForward(m));
       const aiBtn = actions.createEl("button", { text: "🤖 AI返信" });
       aiBtn.addEventListener("click", () => void this.openAIReply(m));
+      const archiveBtn = actions.createEl("button", { text: "🗄 アーカイブ" });
+      archiveBtn.addEventListener("click", async () => {
+        try {
+          await modifyMessageLabels(this.oauth, m.id, [], ["INBOX"]);
+          new Notice("アーカイブしました");
+          void this.refresh();
+        } catch (e) {
+          new Notice(`失敗: ${(e as Error).message}`);
+        }
+      });
+      const trashBtn = actions.createEl("button", { text: "🗑 ゴミ箱" });
+      trashBtn.addEventListener("click", async () => {
+        try {
+          await trashMessage(this.oauth, m.id);
+          new Notice("ゴミ箱へ移動しました");
+          void this.refresh();
+        } catch (e) {
+          new Notice(`失敗: ${(e as Error).message}`);
+        }
+      });
       if (m.attachments.length > 0) {
         const att = card.createDiv({ cls: "nd-mail-attachments nd-muted" });
         att.setText(`📎 添付 ${m.attachments.length}件: ${m.attachments.map((a) => a.filename).join(", ")}`);
