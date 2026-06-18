@@ -42,6 +42,7 @@
 }
 
 .nd-widget {
+  grid-column: span var(--nd-col-span, 12);
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
@@ -477,14 +478,14 @@
   opacity: 0.85;
 }
 
-.nd-prio-urgent { background: #ff5252 !important; color: white !important; }
-.nd-prio-high { background: #ff9800 !important; color: white !important; }
-.nd-prio-medium { background: #fdd835 !important; color: #333 !important; }
-.nd-prio-low { background: #9e9e9e !important; color: white !important; }
+.nd-kanban-card-tag.nd-prio-urgent { background: #ff5252; color: white; }
+.nd-kanban-card-tag.nd-prio-high { background: #ff9800; color: white; }
+.nd-kanban-card-tag.nd-prio-medium { background: #fdd835; color: #333; }
+.nd-kanban-card-tag.nd-prio-low { background: #9e9e9e; color: white; }
 
-.nd-deadline-overdue { background: #b71c1c !important; color: white !important; font-weight: 700; }
-.nd-deadline-today { background: #f57c00 !important; color: white !important; font-weight: 700; }
-.nd-deadline-soon { background: #fbc02d !important; color: #333 !important; }
+.nd-kanban-card-tag.nd-deadline-overdue { background: #b71c1c; color: white; font-weight: 700; }
+.nd-kanban-card-tag.nd-deadline-today { background: #f57c00; color: white; font-weight: 700; }
+.nd-kanban-card-tag.nd-deadline-soon { background: #fbc02d; color: #333; }
 
 .nd-kanban-empty {
   font-size: 0.8em;
@@ -653,9 +654,9 @@
   color: var(--text-muted);
 }
 
-.nd-gantt-bar-group {
-  background: var(--text-accent) !important;
-  color: var(--text-on-accent) !important;
+.nd-gantt-bar.nd-gantt-bar-group {
+  background: var(--text-accent);
+  color: var(--text-on-accent);
   border-radius: 6px;
   font-weight: 700;
 }
@@ -758,9 +759,9 @@
   text-decoration: line-through;
 }
 
-.nd-gantt-bar-overdue {
-  background: #b71c1c !important;
-  color: white !important;
+.nd-gantt-bar.nd-gantt-bar-overdue {
+  background: #b71c1c;
+  color: white;
 }
 
 .nd-gantt-bar-prio-urgent { background: #ff5252; }
@@ -1277,7 +1278,7 @@
 /* Responsive */
 @media (max-width: 800px) {
   .nd-widget {
-    grid-column: span 12 !important;
+    grid-column: span 12;
   }
   .nd-widget-picker {
     grid-template-columns: 1fr;

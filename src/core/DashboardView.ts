@@ -155,7 +155,7 @@ export class DashboardView extends TextFileView {
   private renderWidget(grid: HTMLElement, layout: LayoutItem, widget: WidgetInstance): void {
     const wrap = grid.createDiv({ cls: "nd-widget" });
     wrap.dataset.layoutId = layout.i;
-    wrap.style.gridColumn = `span ${Math.max(1, Math.min(12, layout.w))}`;
+    wrap.style.setProperty("--nd-col-span", String(Math.max(1, Math.min(12, layout.w))));
     // Fixed height — body scrolls internally when content overflows.
     // h is in grid units (80px each).
     const px = `${Math.max(2, layout.h) * 80}px`;

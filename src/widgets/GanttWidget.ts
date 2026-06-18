@@ -412,7 +412,9 @@ async function renderGantt(
     if (overdue) barEl.addClass("nd-gantt-bar-overdue");
 
     const tagColor = bar.tags.map((t) => tagColors[t]).find(Boolean);
-    if (tagColor && !overdue && !bar.done) {
+    // Group headers and overdue bars get their colour from a CSS class; skip the
+    // inline tag colour so those classes win without needing !important.
+    if (tagColor && !overdue && !bar.done && !bar.isGroupHeader) {
       barEl.style.background = tagColor;
       barEl.style.color = pickFg(tagColor);
     }
