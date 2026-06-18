@@ -1,9 +1,9 @@
-import { Notice, Plugin, TFile, normalizePath } from "obsidian";
+import { Modal, Notice, Plugin, TFile, normalizePath } from "obsidian";
 import {
   DASHBOARD_EXTENSION,
   DEFAULT_DASHBOARD_FOLDER,
   DEFAULT_HOME_FILENAME,
-  VIEW_TYPE_DASHBOARD,
+  VIEW_TYPE_MAIL,
 } from "./core/constants";
 import {
   createDefaultDashboard,
@@ -11,9 +11,12 @@ import {
 } from "./core/DashboardModel";
 import type { Dashboard } from "./core/types";
 import { DashboardView } from "./core/DashboardView";
+import { getHomeTemplate } from "./core/templates/homeTemplate";
 import { GoogleOAuth } from "./auth/googleOAuth";
 import { GoogleAuthModal } from "./ui/GoogleAuthModal";
 import { listCalendars } from "./adapters/googleCalendar";
+import { SheetsSync } from "./sync/sheetsSync";
+import { AutoSyncWatcher } from "./sync/autoSyncWatcher";
 
 export function registerCommands(plugin: Plugin): void {
   plugin.addCommand({
@@ -29,6 +32,28 @@ export function registerCommands(plugin: Plugin): void {
     name: "Open home dashboard",
     callback: async () => {
       await openHomeDashboard(plugin);
+    },
+  });
+
+  plugin.addCommand({
+    id: "open-mail",
+    name: "メールを開く (Gmail)",
+    callback: async () => {
+      const { workspace } = plugin.app;
+      let leaf = workspace.getLeavesOfType(VIEW_TYPE_MAIL)[0];
+      if (!leaf) {
+        leaf = workspace.getLeaf("tab");
+        await leaf.setViewState({ type: VIEW_TYPE_MAIL, active: true });
+      }
+      workspace.revealLeaf(leaf);
+    },
+  });
+
+  plugin.addCommand({
+    id: "reset-home",
+    name: "Reset home dashboard to template",
+    callback: async () => {
+      await resetHomeDashboard(plugin);
     },
   });
 
@@ -89,6 +114,141 @@ export function registerCommands(plugin: Plugin): void {
       }
     },
   });
+
+  plugin.addCommand({
+    id: "sheets-sync-setup-personal",
+    name: "Sheets Sync: Setup personal sheet (個人)",
+    callback: async () => {
+      try {
+        const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
+        const cfg = await sync.setupSheet("personal");
+        if (cfg.spreadsheetUrl) {
+          // eslint-disable-next-line no-console
+          console.log("[Notion Dashboard] Personal Sheets URL:", cfg.spreadsheetUrl);
+        }
+      } catch (e) {
+        new Notice(`Setup失敗: ${(e as Error).message}`);
+      }
+    },
+  });
+
+  plugin.addCommand({
+    id: "sheets-sync-setup-org",
+    name: "Sheets Sync: Setup org sheet (組織)",
+    callback: async () => {
+      try {
+        const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
+        const cfg = await sync.setupSheet("org");
+        if (cfg.spreadsheetUrl) {
+          // eslint-disable-next-line no-console
+          console.log("[Notion Dashboard] Org Sheets URL:", cfg.spreadsheetUrl);
+        }
+      } catch (e) {
+        new Notice(`Setup失敗: ${(e as Error).message}`);
+      }
+    },
+  });
+
+  plugin.addCommand({
+    id: "sheets-sync-now",
+    name: "Sheets Sync: Sync now (both scopes)",
+    callback: async () => {
+      try {
+        const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
+        new Notice("Sheets同期を開始…");
+        const results = await sync.syncAll();
+        const parts: string[] = [];
+        if (results.personal) {
+          parts.push(
+            `個人 push:${results.personal.pushed} pull:${results.personal.pulled}`
+          );
+        }
+        if (results.org) {
+          parts.push(`組織 push:${results.org.pushed} pull:${results.org.pulled}`);
+        }
+        new Notice(`同期完了: ${parts.join(" / ") || "対象なし"}`);
+        // eslint-disable-next-line no-console
+        console.log("[Notion Dashboard] Sync report:", results);
+      } catch (e) {
+        new Notice(`同期失敗: ${(e as Error).message}`);
+      }
+    },
+  });
+
+  plugin.addCommand({
+    id: "sheets-sync-now-personal",
+    name: "Sheets Sync: Sync now (個人 only)",
+    callback: async () => {
+      try {
+        const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
+        const report = await sync.syncScope("personal");
+        new Notice(`個人同期完了: push ${report.pushed} / pull ${report.pulled}`);
+      } catch (e) {
+        new Notice(`同期失敗: ${(e as Error).message}`);
+      }
+    },
+  });
+
+  plugin.addCommand({
+    id: "sheets-sync-now-org",
+    name: "Sheets Sync: Sync now (組織 only)",
+    callback: async () => {
+      try {
+        const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
+        const report = await sync.syncScope("org");
+        new Notice(`組織同期完了: push ${report.pushed} / pull ${report.pulled}`);
+      } catch (e) {
+        new Notice(`同期失敗: ${(e as Error).message}`);
+      }
+    },
+  });
+
+  plugin.addCommand({
+    id: "sheets-sync-status",
+    name: "Sheets Sync: Show status",
+    callback: async () => {
+      try {
+        const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
+        const cfg = await sync.getConfig();
+        const lines: string[] = [];
+        lines.push(`自分: ${cfg.self_owner ?? "(未設定)"}`);
+        if (cfg.personal?.spreadsheetId) {
+          lines.push(
+            `個人: ${cfg.personal.spreadsheetUrl}\n  最終: ${cfg.personal.last_sync ?? "未同期"}`
+          );
+        } else {
+          lines.push("個人: 未設定");
+        }
+        if (cfg.org?.spreadsheetId) {
+          lines.push(
+            `組織: ${cfg.org.spreadsheetUrl}\n  最終: ${cfg.org.last_sync ?? "未同期"}`
+          );
+        } else {
+          lines.push("組織: 未設定");
+        }
+        const watcher = new AutoSyncWatcher(plugin, plugin.app);
+        lines.push(`自動同期: ${(await watcher.isEnabled()) ? "ON" : "OFF"}`);
+        new Notice(lines.join("\n"));
+        // eslint-disable-next-line no-console
+        console.log("[Notion Dashboard] Status:", cfg);
+      } catch (e) {
+        new Notice(`取得失敗: ${(e as Error).message}`);
+      }
+    },
+  });
+
+  plugin.addCommand({
+    id: "sheets-sync-toggle-auto",
+    name: "Sheets Sync: Toggle auto-sync on file change",
+    callback: async () => {
+      const watcher = new AutoSyncWatcher(plugin, plugin.app);
+      const current = await watcher.isEnabled();
+      await watcher.setEnabled(!current);
+      new Notice(
+        `自動同期: ${!current ? "ON" : "OFF"}（次回プラグイン再読み込み時に有効化）`
+      );
+    },
+  });
 }
 
 function activeDashboardView(plugin: Plugin): DashboardView | null {
@@ -126,11 +286,40 @@ async function openHomeDashboard(plugin: Plugin): Promise<void> {
     }
     file = await plugin.app.vault.create(
       homePath,
-      serializeDashboard(buildSampleHome())
+      serializeDashboard(getHomeTemplate(DEFAULT_HOME_FILENAME))
     );
     new Notice(`Home dashboard created at ${homePath}`);
   }
   await openInDashboardView(plugin, file as TFile);
+}
+
+async function resetHomeDashboard(plugin: Plugin): Promise<void> {
+  const folder = normalizePath(DEFAULT_DASHBOARD_FOLDER);
+  const homePath = `${folder}/${DEFAULT_HOME_FILENAME}.${DASHBOARD_EXTENSION}`;
+  const existing = plugin.app.vault.getAbstractFileByPath(homePath);
+
+  const confirmed = await confirmModal(
+    plugin,
+    "ホームダッシュボードをリセット",
+    existing instanceof TFile
+      ? `現在の「${homePath}」を初期テンプレートで上書きします。元のレイアウトとウィジェット設定は失われます。よろしいですか？`
+      : `「${homePath}」を初期テンプレートで作成します。`
+  );
+  if (!confirmed) return;
+
+  const payload = serializeDashboard(getHomeTemplate(DEFAULT_HOME_FILENAME));
+  if (existing instanceof TFile) {
+    await plugin.app.vault.modify(existing, payload);
+    new Notice(`Home dashboard reset: ${homePath}`);
+    await openInDashboardView(plugin, existing);
+  } else {
+    if (!plugin.app.vault.getAbstractFileByPath(folder)) {
+      await plugin.app.vault.createFolder(folder);
+    }
+    const created = await plugin.app.vault.create(homePath, payload);
+    new Notice(`Home dashboard created from template: ${homePath}`);
+    await openInDashboardView(plugin, created);
+  }
 }
 
 async function openInDashboardView(plugin: Plugin, file: TFile): Promise<void> {
@@ -155,182 +344,50 @@ function sanitizeFilename(name: string): string {
   return name.replace(/[\\/:*?"<>|]/g, "_").trim() || "Untitled";
 }
 
-function buildSampleHome(): Dashboard {
-  return {
-    version: 1,
-    title: "ホーム",
-    layout: [
-      { i: "today", x: 0, y: 0, w: 4, h: 2 },
-      { i: "kpi-overdue", x: 4, y: 1, w: 2, h: 2 },
-      { i: "kpi-today", x: 6, y: 2, w: 2, h: 2 },
-      { i: "kpi-week", x: 8, y: 3, w: 2, h: 2 },
-      { i: "kpi-meetings", x: 10, y: 4, w: 2, h: 2 },
-      { i: "gantt", x: 0, y: 5, w: 12, h: 6 },
-      { i: "kanban", x: 0, y: 6, w: 12, h: 6 },
-      { i: "today-cal", x: 0, y: 7, w: 4, h: 7 },
-      { i: "tasks-today", x: 6, y: 8, w: 4, h: 7 },
-      { i: "tasks-week", x: 0, y: 9, w: 4, h: 7 },
-      { i: "tasks-by-pjt", x: 6, y: 10, w: 6, h: 5 },
-      { i: "recent-minutes", x: 0, y: 11, w: 6, h: 5 },
-      { i: "quick-links", x: 0, y: 12, w: 12, h: 4 },
-    ],
-    widgets: {
-      today: {
-        type: "today",
-        title: "今日",
-        settings: {
-          greeting: "おはよう ☀️",
-          dailyFolder: "日報",
-          dailyFormat: "YYYY/YYYY-MM-DD",
-        },
-      },
-      "kpi-overdue": {
-        type: "counter",
-        title: "期限超過",
-        settings: {
-          query:
-            'LIST FROM "タスク/詳細"\n' +
-            'WHERE status != "完了" AND 期限 != null AND 期限 != "なし" AND date(期限) < date(today)',
-          label: "🔥 期限超過",
-          unit: "件",
-        },
-      },
-      "kpi-today": {
-        type: "counter",
-        title: "今日締切",
-        settings: {
-          query:
-            'LIST FROM "タスク/詳細"\n' +
-            'WHERE status != "完了" AND 期限 = date(today)',
-          label: "📌 今日締切",
-          unit: "件",
-        },
-      },
-      "kpi-week": {
-        type: "counter",
-        title: "今週締切",
-        settings: {
-          query:
-            'LIST FROM "タスク/詳細"\n' +
-            'WHERE status != "完了" AND date(期限) >= date(today) AND date(期限) <= date(today) + dur(7 days)',
-          label: "📅 今週締切",
-          unit: "件",
-        },
-      },
-      "kpi-meetings": {
-        type: "counter",
-        title: "今週議事録",
-        settings: {
-          query: 'LIST FROM "議事録" WHERE file.cday >= date(today) - dur(7 days)',
-          label: "💬 7日以内議事録",
-          unit: "件",
-        },
-      },
-      "today-cal": {
-        type: "gcal",
-        title: "今週の予定",
-        settings: {
-          calendarId: "primary",
-          windowDays: 7,
-          maxEvents: 20,
-        },
-      },
-      "tasks-today": {
-        type: "dataview",
-        title: "🔥 今日 + 期限超過タスク",
-        settings: {
-          mode: "dql",
-          query:
-            'TABLE PJT, 期限 AS "期限", 優先度 AS "優先", status AS "状態"\n' +
-            'FROM "タスク/詳細"\n' +
-            'WHERE status != "完了" AND 期限 != null AND 期限 != "なし" AND date(期限) <= date(today)\n' +
-            'SORT date(期限) ASC\n' +
-            'LIMIT 6',
-        },
-      },
-      "tasks-week": {
-        type: "dataview",
-        title: "📅 今週締切タスク (明日〜7日)",
-        settings: {
-          mode: "dql",
-          query:
-            'TABLE PJT, 期限 AS "期限", 優先度 AS "優先"\n' +
-            'FROM "タスク/詳細"\n' +
-            'WHERE status != "完了" AND 期限 != null AND 期限 != "なし"\n' +
-            '  AND date(期限) > date(today) AND date(期限) <= date(today) + dur(7 days)\n' +
-            'SORT date(期限) ASC',
-        },
-      },
-      "tasks-by-pjt": {
-        type: "dataview",
-        title: "📊 PJT別 未完了タスク",
-        settings: {
-          mode: "dql",
-          query:
-            'TABLE length(rows) AS "件数"\n' +
-            'FROM "タスク/詳細"\n' +
-            'WHERE status != "完了"\n' +
-            'GROUP BY PJT\n' +
-            'SORT length(rows) DESC',
-        },
-      },
-      "recent-minutes": {
-        type: "dataview",
-        title: "💬 最近の議事録 (10件)",
-        settings: {
-          mode: "dql",
-          query:
-            'TABLE file.mtime AS "更新"\n' +
-            'FROM "議事録"\n' +
-            'SORT file.mtime DESC\n' +
-            'LIMIT 10',
-        },
-      },
-      "quick-links": {
-        type: "markdown",
-        title: "🔗 クイックリンク / メモ",
-        settings: {
-          content:
-            "## 主要ノート\n" +
-            "- [[自分について]]\n" +
-            "- [[ONBOARDING]]\n" +
-            "- [[README]]\n\n" +
-            "## ダッシュボード操作\n" +
-            "- ⚙ で各ウィジェット編集 (入力は自動保存)\n" +
-            "- ✎ で並び替え・幅変更モード\n" +
-            "- ↻ で個別ウィジェット再読み込み\n" +
-            "- タイトル（上の「ホーム」）クリックでリネーム\n\n" +
-            "_このメモは自由に書き換えてOK_",
-        },
-      },
-      kanban: {
-        type: "kanban",
-        title: "Kanban (タスク)",
-        settings: {
-          folder: "タスク/詳細",
-          statusField: "status",
-          columns: ["未着手", "作業中", "AI移譲", "レビュー待ち", "完了"],
-          showFields: ["PJT", "期限", "優先度"],
-          hideCompleted: false,
-        },
-      },
-      gantt: {
-        type: "gantt",
-        title: "Gantt",
-        settings: {
-          folder: "タスク/詳細",
-          deadlineField: "期限",
-          startField: "開始",
-          durationField: "工数",
-          statusField: "status",
-          groupByField: "PJT",
-          windowDaysBack: 180,
-          windowDaysForward: 365,
-          rowHeight: 26,
-          dayWidth: 24,
-          hideCompleted: false,
-        },
-      },
-    },
-  };
+class ConfirmModal extends Modal {
+  private result = false;
+
+  constructor(
+    plugin: Plugin,
+    private readonly heading: string,
+    private readonly message: string,
+    private readonly onDone: (ok: boolean) => void
+  ) {
+    super(plugin.app);
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h3", { text: this.heading });
+    contentEl.createEl("p", { text: this.message });
+
+    const buttons = contentEl.createDiv({ cls: "modal-button-container" });
+    const cancel = buttons.createEl("button", { text: "キャンセル" });
+    cancel.addEventListener("click", () => {
+      this.result = false;
+      this.close();
+    });
+    const ok = buttons.createEl("button", { text: "リセット", cls: "mod-warning" });
+    ok.addEventListener("click", () => {
+      this.result = true;
+      this.close();
+    });
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+    this.onDone(this.result);
+  }
 }
+
+function confirmModal(
+  plugin: Plugin,
+  heading: string,
+  message: string
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    new ConfirmModal(plugin, heading, message, resolve).open();
+  });
+}
+
