@@ -81,7 +81,7 @@ export const kanbanWidget: WidgetDefinition<Settings> = {
       .setDesc("statusに入りうる値。並び順=この順番")
       .addText((t) => {
         t.setValue(settings.columns.join(", "));
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("deck-input-full");
         t.onChange((v) =>
           onChange({
             ...settings,
@@ -97,7 +97,7 @@ export const kanbanWidget: WidgetDefinition<Settings> = {
       .setDesc("frontmatterのキー名")
       .addText((t) => {
         t.setValue(settings.showFields.join(", "));
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("deck-input-full");
         t.onChange((v) =>
           onChange({
             ...settings,

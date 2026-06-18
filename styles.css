@@ -1348,3 +1348,8 @@
 .nd-widget-mail .nd-mail-widget-item { padding: 4px 6px; cursor: pointer; border-bottom: 1px solid var(--background-modifier-border); }
 .nd-widget-mail .nd-mail-widget-item:hover { background: var(--background-modifier-hover); }
 .nd-widget-mail .nd-mail-unread .nd-mail-subject { font-weight: 700; }
+
+/* v0.0.2: utility classes replacing inline static styles (Obsidian lint: no-static-styles-assignment) */
+.deck-input-full { width: 100%; }
+.deck-input-mono { font-family: var(--font-monospace); }
+.deck-spacer { flex: 1; }

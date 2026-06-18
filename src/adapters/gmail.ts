@@ -30,7 +30,7 @@ export function base64UrlDecode(s: string): string {
 
 /** RFC 2047 encoded-word for non-ASCII header values (Subject, display names). */
 export function encodeRfc2047(value: string): string {
-  // eslint-disable-next-line no-control-regex
+  // eslint-disable-next-line no-control-regex -- intentionally test the ASCII control range to detect header values that need RFC 2047 encoding
   if (/^[\x00-\x7F]*$/.test(value)) return value;
   return `=?UTF-8?B?${utf8ToBase64(value)}?=`;
 }

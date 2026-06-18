@@ -106,9 +106,7 @@ export function registerCommands(plugin: Plugin): void {
         const lines = cals.map(
           (c) => `${c.primary ? "★" : "  "} ${c.summary}\n   → ${c.id}`
         );
-        new Notice(`カレンダー一覧 (${cals.length}件) — コンソールに出力`);
-        // eslint-disable-next-line no-console
-        console.log("[Deck] Google Calendars:\n" + lines.join("\n\n"));
+        new Notice(`カレンダー一覧 (${cals.length}件):\n${lines.join("\n")}`, 15000);
       } catch (e) {
         new Notice(`取得失敗: ${(e as Error).message}`);
       }
@@ -123,8 +121,7 @@ export function registerCommands(plugin: Plugin): void {
         const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
         const cfg = await sync.setupSheet("personal");
         if (cfg.spreadsheetUrl) {
-          // eslint-disable-next-line no-console
-          console.log("[Deck] Personal Sheets URL:", cfg.spreadsheetUrl);
+          new Notice(`個人シート作成: ${cfg.spreadsheetUrl}`, 10000);
         }
       } catch (e) {
         new Notice(`Setup失敗: ${(e as Error).message}`);
@@ -140,8 +137,7 @@ export function registerCommands(plugin: Plugin): void {
         const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
         const cfg = await sync.setupSheet("org");
         if (cfg.spreadsheetUrl) {
-          // eslint-disable-next-line no-console
-          console.log("[Deck] Org Sheets URL:", cfg.spreadsheetUrl);
+          new Notice(`組織シート作成: ${cfg.spreadsheetUrl}`, 10000);
         }
       } catch (e) {
         new Notice(`Setup失敗: ${(e as Error).message}`);
@@ -167,8 +163,6 @@ export function registerCommands(plugin: Plugin): void {
           parts.push(`組織 push:${results.org.pushed} pull:${results.org.pulled}`);
         }
         new Notice(`同期完了: ${parts.join(" / ") || "対象なし"}`);
-        // eslint-disable-next-line no-console
-        console.log("[Deck] Sync report:", results);
       } catch (e) {
         new Notice(`同期失敗: ${(e as Error).message}`);
       }
@@ -229,8 +223,6 @@ export function registerCommands(plugin: Plugin): void {
         const watcher = new AutoSyncWatcher(plugin, plugin.app);
         lines.push(`自動同期: ${(await watcher.isEnabled()) ? "ON" : "OFF"}`);
         new Notice(lines.join("\n"));
-        // eslint-disable-next-line no-console
-        console.log("[Deck] Status:", cfg);
       } catch (e) {
         new Notice(`取得失敗: ${(e as Error).message}`);
       }

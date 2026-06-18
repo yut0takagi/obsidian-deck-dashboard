@@ -332,7 +332,7 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
       .setDesc("空 = vault全体（除外フォルダを除く）。例: 議事録, ナレッジ, 日報")
       .addText((t) => {
         t.setValue(settings.folders.join(", "));
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("deck-input-full");
         t.onChange((v) =>
           onChange({
             ...settings,
@@ -348,7 +348,7 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
       )
       .addText((t) => {
         t.setValue((settings.excludeFolders ?? DEFAULT_EXCLUDES).join(", "));
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("deck-input-full");
         t.onChange((v) =>
           onChange({
             ...settings,

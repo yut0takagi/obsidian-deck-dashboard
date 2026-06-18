@@ -130,7 +130,7 @@ export const calendarWidget: WidgetDefinition<Settings> = {
       .setDesc("Googleカレンダーの「カレンダーの非公開URL（iCal形式）」など。https://～.ics で終わるURL")
       .addText((t) => {
         t.setValue(settings.icalUrl);
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("deck-input-full");
         t.onChange((v) => onChange({ ...settings, icalUrl: v.trim() }));
       });
     new Setting(container)

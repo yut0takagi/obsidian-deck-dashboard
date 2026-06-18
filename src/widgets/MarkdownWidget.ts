@@ -26,7 +26,7 @@ export const markdownWidget: WidgetDefinition<Settings> = {
       .addTextArea((t) => {
         t.setValue(settings.content);
         t.inputEl.rows = 10;
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("deck-input-full");
         t.onChange((v) => onChange({ ...settings, content: v }));
       });
   },

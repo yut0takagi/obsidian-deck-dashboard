@@ -270,8 +270,7 @@ export class SheetsSync {
         // If the task_id exists elsewhere in vault (different scope), skip —
         // it'll be reconciled by that scope's own sync.
         if (allKnownIds.has(id)) {
-          // eslint-disable-next-line no-console
-          console.log(`[ND sync] skip out-of-scope row: ${id} (exists in another scope)`);
+          // Out-of-scope row: exists in another scope's vault; let that scope reconcile it.
           continue;
         }
         // Truly new → create md file

@@ -123,7 +123,7 @@ export const googleCalendarWidget: WidgetDefinition<Settings> = {
       .setDesc("primary = メインカレンダー / Google CalendarのカレンダーID (xxx@group.calendar.google.com) も可")
       .addText((t) => {
         t.setValue(settings.calendarId);
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("deck-input-full");
         t.onChange((v) => onChange({ ...settings, calendarId: v.trim() || "primary" }));
       });
     new Setting(container)

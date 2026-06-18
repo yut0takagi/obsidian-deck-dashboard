@@ -34,7 +34,7 @@ export class GoogleAuthModal extends Modal {
       .addTextArea((t) => {
         t.setValue("");
         t.inputEl.rows = 6;
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("deck-input-full");
         t.inputEl.placeholder = '{"installed":{"client_id":"...","client_secret":"..."}}';
         t.onChange(async (v) => {
           const parsed = parseCredentialJson(v);
@@ -53,13 +53,13 @@ export class GoogleAuthModal extends Modal {
     new Setting(contentEl).setName("client_id").addText((t) => {
       clientIdInput = t;
       t.setValue(creds.client_id);
-      t.inputEl.style.width = "100%";
+      t.inputEl.addClass("deck-input-full");
       t.onChange((v) => (creds.client_id = v.trim()));
     });
     new Setting(contentEl).setName("client_secret").addText((t) => {
       clientSecretInput = t;
       t.setValue(creds.client_secret);
-      t.inputEl.style.width = "100%";
+      t.inputEl.addClass("deck-input-full");
       t.onChange((v) => (creds.client_secret = v.trim()));
     });
 
@@ -94,7 +94,7 @@ export class GoogleAuthModal extends Modal {
     });
 
     const spacer = btnRow.createDiv();
-    spacer.style.flex = "1";
+    spacer.addClass("deck-spacer");
 
     const authBtn = btnRow.createEl("button", { text: "認証を開始", cls: "mod-cta" });
     authBtn.addEventListener("click", async () => {

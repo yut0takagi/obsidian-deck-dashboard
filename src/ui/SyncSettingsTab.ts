@@ -19,7 +19,7 @@ export class SyncSettingsTab extends PluginSettingTab {
   async display(): Promise<void> {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Deck" });
+    new Setting(containerEl).setName("Deck").setHeading();
 
     await this.renderGoogleAuthSection(containerEl);
     await this.renderSelfOwnerSection(containerEl);
@@ -34,7 +34,7 @@ export class SyncSettingsTab extends PluginSettingTab {
     const oauth = new GoogleOAuth(this.plugin);
     const authed = await oauth.isAuthenticated();
     const section = parent.createDiv();
-    section.createEl("h3", { text: "Google 認証" });
+    new Setting(section).setName("Google 認証").setHeading();
 
     new Setting(section)
       .setName("認証状態")
@@ -51,7 +51,7 @@ export class SyncSettingsTab extends PluginSettingTab {
 
   private async renderSelfOwnerSection(parent: HTMLElement): Promise<void> {
     const section = parent.createDiv();
-    section.createEl("h3", { text: "自分の名前" });
+    new Setting(section).setName("自分の名前").setHeading();
 
     const sync = new SheetsSync(this.app, this.plugin, new GoogleOAuth(this.plugin));
     const config = await sync.getConfig();
@@ -78,7 +78,7 @@ export class SyncSettingsTab extends PluginSettingTab {
     title: string
   ): Promise<void> {
     const section = parent.createDiv();
-    section.createEl("h3", { text: title });
+    new Setting(section).setName(title).setHeading();
 
     const sync = new SheetsSync(this.app, this.plugin, new GoogleOAuth(this.plugin));
     const config = await sync.getConfig();
@@ -147,7 +147,7 @@ export class SyncSettingsTab extends PluginSettingTab {
 
   private async renderAutoSyncSection(parent: HTMLElement): Promise<void> {
     const section = parent.createDiv();
-    section.createEl("h3", { text: "自動同期" });
+    new Setting(section).setName("自動同期").setHeading();
 
     const watcher = new AutoSyncWatcher(this.plugin, this.app);
     const enabled = await watcher.isEnabled();
@@ -168,7 +168,7 @@ export class SyncSettingsTab extends PluginSettingTab {
 
   private async renderManualSyncSection(parent: HTMLElement): Promise<void> {
     const section = parent.createDiv();
-    section.createEl("h3", { text: "手動同期 (まとめて)" });
+    new Setting(section).setName("手動同期 (まとめて)").setHeading();
 
     const sync = new SheetsSync(this.app, this.plugin, new GoogleOAuth(this.plugin));
 
@@ -202,7 +202,7 @@ export class SyncSettingsTab extends PluginSettingTab {
 
   private async renderMailSection(parent: HTMLElement): Promise<void> {
     const section = parent.createDiv();
-    section.createEl("h3", { text: "メール (Gmail)" });
+    new Setting(section).setName("メール (Gmail)").setHeading();
     const cfg = await loadMailConfig(this.plugin);
 
     new Setting(section)
@@ -247,7 +247,7 @@ export class SyncSettingsTab extends PluginSettingTab {
       .setDesc("返信ドラフト生成時に過去背景として参照する vault フォルダ。例: 議事録, ナレッジ")
       .addText((t) => {
         t.setValue(cfg.ragFolders.join(", "));
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("deck-input-full");
         t.onChange(async (v) => {
           cfg.ragFolders = v.split(",").map((s) => s.trim()).filter(Boolean);
           await saveMailConfig(this.plugin, cfg);

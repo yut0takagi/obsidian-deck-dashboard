@@ -54,7 +54,7 @@ export const chartsWidget: WidgetDefinition<Settings> = {
       .setDesc("tasks-completed-30d / notes-created-30d / tasks-by-pjt / tasks-by-status")
       .addText((t) => {
         t.setValue(settings.charts.join(","));
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("deck-input-full");
         t.onChange((v) =>
           onChange({
             ...settings,

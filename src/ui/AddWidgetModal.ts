@@ -94,7 +94,7 @@ export class EditWidgetModal extends Modal {
       this.close();
     });
     const spacer = btnRow.createDiv();
-    spacer.style.flex = "1";
+    spacer.addClass("deck-spacer");
     const closeBtn = btnRow.createEl("button", { text: "閉じる", cls: "mod-cta" });
     closeBtn.addEventListener("click", () => {
       this.close();

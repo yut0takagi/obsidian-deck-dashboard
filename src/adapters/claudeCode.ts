@@ -20,7 +20,7 @@ export async function runClaudeP(
   if (!Platform.isDesktop) {
     throw new Error("claude -p はデスクトップ版のみ対応です。");
   }
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-var-requires -- child_process is desktop-only; lazy require keeps it out of the mobile bundle
   const { spawn } = require("child_process") as typeof import("child_process");
 
   const cmd = [claudeCmd, "-p", ...extraArgs].map(shellQuote).join(" ");

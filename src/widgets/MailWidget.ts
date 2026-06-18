@@ -72,7 +72,7 @@ export const mailWidget: WidgetDefinition<Settings> = {
       .setDesc("Gmail 検索構文。例: in:inbox / is:unread / from:boss@x.com")
       .addText((t) => {
         t.setValue(settings.query);
-        t.inputEl.style.width = "100%";
+        t.inputEl.addClass("deck-input-full");
         t.onChange((v) => onChange({ ...settings, query: v.trim() || "in:inbox" }));
       });
     new Setting(container)

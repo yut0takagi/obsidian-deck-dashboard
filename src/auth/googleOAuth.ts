@@ -131,7 +131,7 @@ export class GoogleOAuth {
     }
 
     // Lazy require Node http to avoid mobile bundle issues
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-var-requires -- Node http/url are desktop-only; lazy require avoids loading them in the mobile bundle
     const http = require("http") as typeof import("http");
     const url = require("url") as typeof import("url");
 

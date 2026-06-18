@@ -59,8 +59,8 @@ export const counterWidget: WidgetDefinition<Settings> = {
       .addTextArea((t) => {
         t.setValue(settings.query);
         t.inputEl.rows = 4;
-        t.inputEl.style.width = "100%";
-        t.inputEl.style.fontFamily = "var(--font-monospace)";
+        t.inputEl.addClass("deck-input-full");
+        t.inputEl.addClass("deck-input-mono");
         t.onChange((v) => onChange({ ...settings, query: v }));
       });
   },
