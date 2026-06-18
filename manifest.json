@@ -1,7 +1,7 @@
 {
   "id": "deck-dashboard",
   "name": "Deck",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "minAppVersion": "1.7.2",
   "description": "Draggable widget-grid dashboards that combine tasks, Dataview queries, Bases, notes, calendar, and mail.",
   "author": "Yuto Takagi",

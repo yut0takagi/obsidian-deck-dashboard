@@ -321,7 +321,7 @@ function pickSuccessStatus(columns: string[]): string {
  */
 function stringifyFm(value: unknown): string {
   if (value !== null && typeof value === "object") {
-    // eslint-disable-next-line @typescript-eslint/no-base-to-string
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string -- value is unknown frontmatter; intentionally preserve legacy String() output (Array/Date toString, "[object Object]" fallback)
     return String(value);
   }
   return String(value);

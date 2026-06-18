@@ -131,10 +131,10 @@ export class GoogleOAuth {
     }
 
     // Lazy require Node http/url to avoid pulling them into the mobile bundle.
-    /* eslint-disable @typescript-eslint/no-require-imports, import/no-nodejs-modules, no-undef -- Node http/url are desktop-only; lazy require keeps them out of the mobile bundle */
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, no-undef -- Node http is desktop-only; lazy require keeps it out of the mobile bundle
     const http = require("http") as typeof import("http");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, no-undef -- Node url is desktop-only; lazy require keeps it out of the mobile bundle
     const url = require("url") as typeof import("url");
-    /* eslint-enable @typescript-eslint/no-require-imports, import/no-nodejs-modules, no-undef */
 
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await sha256Base64Url(codeVerifier);

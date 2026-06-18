@@ -84,7 +84,7 @@ export function runClaudeStream(opts: {
     timeoutMs = 30 * 60_000,
   } = opts;
 
-  // eslint-disable-next-line import/no-nodejs-modules, @typescript-eslint/no-require-imports, no-undef -- child_process is desktop-only; lazy require keeps it out of the mobile bundle
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, no-undef -- child_process is desktop-only; lazy require keeps it out of the mobile bundle
   const { spawn } = require("child_process") as typeof import("child_process");
 
   const args = [
