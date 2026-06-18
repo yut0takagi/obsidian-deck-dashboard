@@ -98,7 +98,7 @@ export class AISessionListModal extends Modal {
     }
 
     const logBtn = actions.createEl("button", { text: "📄 ログ" });
-    logBtn.addEventListener("click", () => this.openLog(entry));
+    logBtn.addEventListener("click", () => void this.openLog(entry));
   }
 
   private reopen(entry: SessionEntry): void {

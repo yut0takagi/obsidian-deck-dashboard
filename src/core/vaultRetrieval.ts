@@ -13,7 +13,7 @@ export interface RetrievalOptions {
   excludeFolders: string[];
 }
 
-export const ALWAYS_EXCLUDED = [".obsidian", ".trash", ".claude", "node_modules"];
+export const ALWAYS_EXCLUDED = [".trash", ".claude", "node_modules"];
 export const DEFAULT_EXCLUDES = ["ログ", "アーカイブ", "添付", "inbox/temp"];
 
 export async function selectCandidates(
@@ -23,8 +23,12 @@ export async function selectCandidates(
 ): Promise<Candidate[]> {
   const tokens = tokenize(query);
   if (tokens.length === 0) return [];
-  const files: TFile[] = (app.vault as any).getMarkdownFiles();
-  const excludes = [...ALWAYS_EXCLUDED, ...(opts.excludeFolders ?? DEFAULT_EXCLUDES)];
+  const files: TFile[] = app.vault.getMarkdownFiles();
+  const excludes = [
+    app.vault.configDir,
+    ...ALWAYS_EXCLUDED,
+    ...(opts.excludeFolders ?? DEFAULT_EXCLUDES),
+  ];
   const filtered = files.filter((f) => {
     if (excludes.some((ex) => f.path === ex || f.path.startsWith(ex + "/"))) return false;
     if (opts.folders.length === 0) return true;
@@ -59,7 +63,7 @@ export async function selectCandidates(
 function tokenize(s: string): string[] {
   return s
     .toLowerCase()
-    .replace(/[、。！？「」『』（）()【】\[\]]/g, " ")
+    .replace(/[、。！？「」『』（）()【】[\]]/g, " ")
     .split(/\s+/)
     .filter((t) => t.length >= 2);
 }

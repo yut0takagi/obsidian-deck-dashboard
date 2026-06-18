@@ -21,7 +21,38 @@ export interface GCalCalendar {
 
 const API = "https://www.googleapis.com/calendar/v3";
 
-async function authedGet(oauth: GoogleOAuth, url: string): Promise<any> {
+/** Raw Google Calendar API shapes (only the fields this adapter reads). */
+interface RawCalendarListEntry {
+  id?: string;
+  summary?: string;
+  description?: string;
+  primary?: boolean;
+  backgroundColor?: string;
+}
+
+interface RawCalendarList {
+  items?: RawCalendarListEntry[];
+}
+
+interface RawEventDateTime {
+  dateTime?: string;
+  date?: string;
+}
+
+interface RawCalendarEvent {
+  id?: string;
+  summary?: string;
+  location?: string;
+  htmlLink?: string;
+  start?: RawEventDateTime;
+  end?: RawEventDateTime;
+}
+
+interface RawEventList {
+  items?: RawCalendarEvent[];
+}
+
+async function authedGet(oauth: GoogleOAuth, url: string): Promise<unknown> {
   const token = await oauth.getAccessToken();
   const res = await requestUrl({
     url,
@@ -35,9 +66,12 @@ async function authedGet(oauth: GoogleOAuth, url: string): Promise<any> {
 }
 
 export async function listCalendars(oauth: GoogleOAuth): Promise<GCalCalendar[]> {
-  const json = await authedGet(oauth, `${API}/users/me/calendarList?maxResults=250`);
-  return (json.items ?? []).map((c: any) => ({
-    id: c.id,
+  const json = (await authedGet(
+    oauth,
+    `${API}/users/me/calendarList?maxResults=250`
+  )) as RawCalendarList;
+  return (json.items ?? []).map((c) => ({
+    id: c.id ?? "",
     summary: c.summary ?? "(no name)",
     description: c.description ?? "",
     primary: !!c.primary,
@@ -60,15 +94,15 @@ export async function listEvents(
     orderBy: "startTime",
   }).toString();
   const url = `${API}/calendars/${encodeURIComponent(calendarId)}/events?${params}`;
-  const json = await authedGet(oauth, url);
-  return (json.items ?? []).map((ev: any) => {
+  const json = (await authedGet(oauth, url)) as RawEventList;
+  return (json.items ?? []).map((ev) => {
     const isAllDay = !!ev.start?.date;
     const start = isAllDay
-      ? new Date(ev.start.date + "T00:00:00")
-      : new Date(ev.start.dateTime);
+      ? new Date((ev.start?.date ?? "") + "T00:00:00")
+      : new Date(ev.start?.dateTime ?? "");
     const end = isAllDay
-      ? new Date(ev.end.date + "T00:00:00")
-      : new Date(ev.end.dateTime);
+      ? new Date((ev.end?.date ?? "") + "T00:00:00")
+      : new Date(ev.end?.dateTime ?? "");
     return {
       id: ev.id ?? "",
       summary: ev.summary ?? "(no title)",

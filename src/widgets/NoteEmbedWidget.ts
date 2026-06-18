@@ -28,7 +28,7 @@ export const noteEmbedWidget: WidgetDefinition<Settings> = {
     const link = header.createEl("a", { text: file.basename, cls: "internal-link" });
     link.addEventListener("click", (e) => {
       e.preventDefault();
-      ctx.app.workspace.openLinkText(file.path, "", false);
+      void ctx.app.workspace.openLinkText(file.path, "", false);
     });
     const body = el.createDiv({ cls: "nd-note-body" });
     const raw = await ctx.app.vault.cachedRead(file);

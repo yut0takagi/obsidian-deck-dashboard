@@ -77,38 +77,44 @@ export class GoogleAuthModal extends Modal {
     const btnRow = contentEl.createDiv({ cls: "nd-btn-row" });
 
     const signoutBtn = btnRow.createEl("button", { text: "サインアウト" });
-    signoutBtn.addEventListener("click", async () => {
-      await this.oauth.clearTokens();
-      new Notice("サインアウトしました");
-      await renderStatus();
+    signoutBtn.addEventListener("click", () => {
+      void (async () => {
+        await this.oauth.clearTokens();
+        new Notice("サインアウトしました");
+        await renderStatus();
+      })();
     });
 
     const saveBtn = btnRow.createEl("button", { text: "credential 保存" });
-    saveBtn.addEventListener("click", async () => {
-      if (!creds.client_id || !creds.client_secret) {
-        new Notice("client_id と client_secret 両方必要です");
-        return;
-      }
-      await this.oauth.setCredentials(creds);
-      new Notice("credential を保存しました");
+    saveBtn.addEventListener("click", () => {
+      void (async () => {
+        if (!creds.client_id || !creds.client_secret) {
+          new Notice("client_id と client_secret 両方必要です");
+          return;
+        }
+        await this.oauth.setCredentials(creds);
+        new Notice("credential を保存しました");
+      })();
     });
 
     const spacer = btnRow.createDiv();
     spacer.addClass("deck-spacer");
 
     const authBtn = btnRow.createEl("button", { text: "認証を開始", cls: "mod-cta" });
-    authBtn.addEventListener("click", async () => {
-      if (!creds.client_id || !creds.client_secret) {
-        new Notice("先に credential を保存");
-        return;
-      }
-      await this.oauth.setCredentials(creds);
-      try {
-        await this.oauth.authenticate();
-        await renderStatus();
-      } catch (e) {
-        new Notice(`認証失敗: ${(e as Error).message}`);
-      }
+    authBtn.addEventListener("click", () => {
+      void (async () => {
+        if (!creds.client_id || !creds.client_secret) {
+          new Notice("先に credential を保存");
+          return;
+        }
+        await this.oauth.setCredentials(creds);
+        try {
+          await this.oauth.authenticate();
+          await renderStatus();
+        } catch (e) {
+          new Notice(`認証失敗: ${(e as Error).message}`);
+        }
+      })();
     });
   }
 
@@ -117,16 +123,27 @@ export class GoogleAuthModal extends Modal {
   }
 }
 
+/** Minimal shape of a Google OAuth client credential section. */
+interface CredentialSection {
+  client_id?: unknown;
+  client_secret?: unknown;
+}
+/** Google credential.json may wrap the section under `installed` or `web`. */
+interface CredentialJson extends CredentialSection {
+  installed?: CredentialSection;
+  web?: CredentialSection;
+}
+
 function parseCredentialJson(
   raw: string
 ): { client_id: string; client_secret: string } | null {
   try {
     const trimmed = raw.trim();
     if (!trimmed) return null;
-    const obj = JSON.parse(trimmed);
+    const obj = JSON.parse(trimmed) as CredentialJson;
     // Google credential.json shape: { installed: { client_id, client_secret, ... } }
     //                            or { web: { client_id, client_secret, ... } }
-    const inner = obj.installed ?? obj.web ?? obj;
+    const inner: CredentialSection = obj.installed ?? obj.web ?? obj;
     if (typeof inner.client_id === "string" && typeof inner.client_secret === "string") {
       return { client_id: inner.client_id, client_secret: inner.client_secret };
     }

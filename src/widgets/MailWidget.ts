@@ -1,7 +1,8 @@
 import { Setting } from "obsidian";
+import type { App } from "obsidian";
 import type { WidgetDefinition } from "./types";
 import { GoogleOAuth, hasScope } from "../auth/googleOAuth";
-import { listThreads, senderDisplayName, type GmailThreadSummary } from "../adapters/gmail";
+import { listThreads, senderDisplayName } from "../adapters/gmail";
 import { MailView } from "../core/MailView";
 import { VIEW_TYPE_MAIL } from "../core/constants";
 
@@ -12,15 +13,15 @@ interface Settings {
   maxItems: number;
 }
 
-async function openMailViewAt(app: any, threadId: string): Promise<void> {
+async function openMailViewAt(app: App, threadId: string): Promise<void> {
   let leaf = app.workspace.getLeavesOfType(VIEW_TYPE_MAIL)[0];
   if (!leaf) {
     leaf = app.workspace.getLeaf("tab");
     await leaf.setViewState({ type: VIEW_TYPE_MAIL, active: true });
   }
-  app.workspace.revealLeaf(leaf);
+  void app.workspace.revealLeaf(leaf);
   const view = leaf.view;
-  if (view instanceof MailView) view.openThread(threadId);
+  if (view instanceof MailView) void view.openThread(threadId);
 }
 
 export const mailWidget: WidgetDefinition<Settings> = {

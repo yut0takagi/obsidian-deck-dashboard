@@ -1,6 +1,6 @@
 import { Setting, TFile } from "obsidian";
 import type { WidgetDefinition, WidgetContext } from "./types";
-import { parseMarkwhen, type MwEvent } from "../adapters/markwhen";
+import { parseMarkwhen } from "../adapters/markwhen";
 import { renderMemberTabs } from "./KanbanWidget";
 
 const ALL_MEMBERS = "";
@@ -42,6 +42,23 @@ interface Bar {
 
 const DAY_MS = 86400000;
 const ZOOM_LEVELS = [8, 12, 16, 24, 32, 48, 64];
+
+/** Narrow view of a note's frontmatter: arbitrary keys with unknown values. */
+type Frontmatter = Record<string, unknown>;
+
+/** Read a file's frontmatter as a typed record (empty when absent). */
+function readFrontmatter(ctx: WidgetContext, file: TFile): Frontmatter {
+  return ctx.app.metadataCache.getFileCache(file)?.frontmatter ?? {};
+}
+
+/** Stringify an unknown frontmatter value (mirrors `String(...)` semantics). */
+function fmString(v: unknown): string {
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean" || v == null) return String(v);
+  if (Array.isArray(v)) return v.join(",");
+  // Plain objects stringify as "[object Object]" — same as String(v).
+  return Object.prototype.toString.call(v);
+}
 
 // Ephemeral per-render state, keyed by widget DOM element. Survives re-renders
 // of the same widget but isn't persisted to .dashboard JSON.
@@ -211,15 +228,15 @@ async function renderGantt(
 
   mkBtn(tbLeft, "« 前へ", () => {
     state.offsetDays -= Math.max(1, Math.floor(settings.windowDaysForward / 2));
-    renderGantt(el, settings, ctx);
+    void renderGantt(el, settings, ctx);
   });
   mkBtn(tbLeft, "今日", () => {
     state.offsetDays = 0;
-    renderGantt(el, settings, ctx);
+    void renderGantt(el, settings, ctx);
   });
   mkBtn(tbLeft, "次へ »", () => {
     state.offsetDays += Math.max(1, Math.floor(settings.windowDaysForward / 2));
-    renderGantt(el, settings, ctx);
+    void renderGantt(el, settings, ctx);
   });
 
   const periodLabel = tbRight.createSpan({
@@ -230,19 +247,19 @@ async function renderGantt(
   mkBtn(tbRight, "−", () => {
     if (state.zoomIdx > 0) {
       state.zoomIdx--;
-      renderGantt(el, settings, ctx);
+      void renderGantt(el, settings, ctx);
     }
   });
   mkBtn(tbRight, "+", () => {
     if (state.zoomIdx < ZOOM_LEVELS.length - 1) {
       state.zoomIdx++;
-      renderGantt(el, settings, ctx);
+      void renderGantt(el, settings, ctx);
     }
   });
   mkBtn(tbRight, "リセット", () => {
     state.zoomIdx = nearestZoomIdx(settings.dayWidth);
     state.offsetDays = 0;
-    renderGantt(el, settings, ctx);
+    void renderGantt(el, settings, ctx);
   });
 
   // Collect bars
@@ -267,7 +284,7 @@ async function renderGantt(
   const members = Array.from(new Set(bars.map((b) => b.owner).filter(Boolean))).sort();
   renderMemberTabs(el, members, state.selectedMember, (next) => {
     state.selectedMember = next;
-    renderGantt(el, settings, ctx);
+    void renderGantt(el, settings, ctx);
   });
   if (state.selectedMember !== ALL_MEMBERS) {
     bars = bars.filter((b) => b.owner === state.selectedMember);
@@ -296,17 +313,6 @@ async function renderGantt(
       text: `この期間 (${fmt(windowStart)} 〜 ${fmt(windowEnd)}) にイベントなし。« 前へ / 次へ » で期間を動かすか、設定で期間日数を増やしてください。`,
     });
     return;
-  }
-
-  // Count rows: each visible bar gets a row, plus 1 row per new section
-  let rowCount = 0;
-  let countingSection = "__none__";
-  for (const b of visible) {
-    if (b.section !== countingSection) {
-      countingSection = b.section;
-      if (countingSection) rowCount++; // section divider row
-    }
-    rowCount++;
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -439,7 +445,7 @@ async function renderGantt(
     if (scrollSyncing) return;
     scrollSyncing = true;
     leftBody.scrollTop = right.scrollTop;
-    requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => {
       scrollSyncing = false;
     });
   });
@@ -452,7 +458,7 @@ async function renderGantt(
   });
 
   // Auto-scroll horizontally so today is near left edge.
-  setTimeout(() => {
+  window.setTimeout(() => {
     right.scrollLeft = Math.max(0, todayDays * dayWidth - 80);
   }, 0);
 }
@@ -494,7 +500,7 @@ async function collectFromMarkwhen(
       onClick = () => {
         const target = ctx.app.metadataCache.getFirstLinkpathDest(path, settings.markwhenPath);
         if (target instanceof TFile) {
-          ctx.app.workspace.getLeaf(false).openFile(target);
+          void ctx.app.workspace.getLeaf(false).openFile(target);
         }
       };
     }
@@ -523,20 +529,20 @@ function collectFromFrontmatter(
 ): Bar[] {
   const folder = settings.folder.replace(/\/+$/, "") + "/";
   const out: Bar[] = [];
-  const files: TFile[] = (ctx.app.vault as any).getMarkdownFiles();
+  const files: TFile[] = ctx.app.vault.getMarkdownFiles();
   for (const f of files) {
     if (!f.path.startsWith(folder)) continue;
-    const fm = (ctx.app as any).metadataCache.getFileCache(f)?.frontmatter ?? {};
-    const status = fm[settings.statusField] ? String(fm[settings.statusField]) : "";
+    const fm = readFrontmatter(ctx, f);
+    const status = fm[settings.statusField] ? fmString(fm[settings.statusField]) : "";
     const done = status === "完了";
     const deadlineRaw = fm[settings.deadlineField];
     if (!deadlineRaw || deadlineRaw === "なし") continue;
-    const end = parseISODate(String(deadlineRaw));
+    const end = parseISODate(fmString(deadlineRaw));
     if (!end) continue;
     const startRaw = settings.startField ? fm[settings.startField] : null;
-    let start = startRaw ? parseISODate(String(startRaw)) : null;
+    let start = startRaw ? parseISODate(fmString(startRaw)) : null;
     if (!start) {
-      const dur = parseDurationDays(String(fm[settings.durationField] ?? ""));
+      const dur = parseDurationDays(fmString(fm[settings.durationField] ?? ""));
       // Minimum 1 day visible — but use a sensible week-ish fallback for tasks
       // with only an hourly 工数. If user really wants 1-day bars, set startField.
       const days = dur < 1 ? 3 : Math.max(1, Math.ceil(dur));
@@ -544,7 +550,7 @@ function collectFromFrontmatter(
     }
     void windowStart;
     void windowEnd;
-    const pjt = fm[settings.groupByField] ? String(fm[settings.groupByField]) : "";
+    const pjt = fm[settings.groupByField] ? fmString(fm[settings.groupByField]) : "";
     out.push({
       start,
       end,
@@ -555,7 +561,7 @@ function collectFromFrontmatter(
       done,
       isGroupHeader: false,
       owner: ownerFromPath(f.path, settings.folder),
-      onClick: () => ctx.app.workspace.getLeaf(false).openFile(f),
+      onClick: () => void ctx.app.workspace.getLeaf(false).openFile(f),
       tooltip: `${f.basename}\n${fmt(start)} → ${fmt(end)}\n${pjt}${status ? " • " + status : ""}`,
     });
   }

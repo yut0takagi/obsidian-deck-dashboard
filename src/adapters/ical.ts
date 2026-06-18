@@ -1,5 +1,4 @@
 import { requestUrl } from "obsidian";
-// @ts-ignore — ical.js ships without bundled types
 import ICAL from "ical.js";
 
 export interface CalEvent {
@@ -40,12 +39,13 @@ export function parseEventsInRange(
   rangeStart: Date,
   rangeEnd: Date
 ): CalEvent[] {
-  const jcal = ICAL.parse(icsText);
+  // ICAL.parse() is typed `any` upstream; the jCal payload is the array/string
+  // form ICAL.Component accepts, so narrow at this boundary.
+  const jcal = ICAL.parse(icsText) as unknown[] | string;
   const vcal = new ICAL.Component(jcal);
   const vevents = vcal.getAllSubcomponents("vevent");
 
   const out: CalEvent[] = [];
-  const rangeStartIcal = ICAL.Time.fromJSDate(rangeStart, true);
   const rangeEndIcal = ICAL.Time.fromJSDate(rangeEnd, true);
 
   for (const v of vevents) {
@@ -56,10 +56,12 @@ export function parseEventsInRange(
 
     if (event.isRecurring()) {
       const iter = event.iterator();
-      let next: any;
+      // iter.next() returns the next ICAL.Time, or a falsy value when the
+      // iteration is exhausted (the typings declare a non-null Time).
+      let next: ICAL.Time | null;
       // Hard cap to avoid infinite expansion on broken rules
       let safety = 5000;
-      while ((next = iter.next()) && safety-- > 0) {
+      while ((next = iter.next() as ICAL.Time | null) && safety-- > 0) {
         if (next.compare(rangeEndIcal) > 0) break;
         const occ = event.getOccurrenceDetails(next);
         const startJs = occ.startDate.toJSDate();

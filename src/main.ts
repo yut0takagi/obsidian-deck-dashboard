@@ -1,4 +1,5 @@
 import { Plugin } from "obsidian";
+import type { App } from "obsidian";
 import { DashboardView } from "./core/DashboardView";
 import { MailView } from "./core/MailView";
 import {
@@ -13,11 +14,27 @@ import { AISessionListModal } from "./ui/AISessionListModal";
 import { AutoSyncWatcher } from "./sync/autoSyncWatcher";
 import { SyncSettingsTab } from "./ui/SyncSettingsTab";
 
+/** Minimal shape of Obsidian's (untyped) internal command registry. */
+interface CommandRegistry {
+  executeCommandById(id: string): boolean;
+}
+/** Obsidian's `App` augmented with the internal command registry. */
+type AppWithCommands = App & { commands: CommandRegistry };
+
+/** Desktop vault adapter exposes the absolute base path (not in public typings). */
+interface BasePathAdapter {
+  getBasePath?: () => string;
+}
+
 export default class DeckPlugin extends Plugin {
   private aiStatusBar: HTMLElement | null = null;
   private aiUnsubscribe: (() => void) | null = null;
 
-  async onload(): Promise<void> {
+  onload(): void {
+    this.init();
+  }
+
+  private init(): void {
     registerBuiltinWidgets();
 
     this.registerView(VIEW_TYPE_DASHBOARD, (leaf) => new DashboardView(leaf, this));
@@ -27,10 +44,10 @@ export default class DeckPlugin extends Plugin {
     registerCommands(this);
 
     this.addRibbonIcon("layout-dashboard", "Open home dashboard", () => {
-      (this.app as any).commands.executeCommandById("deck-dashboard:open-home");
+      (this.app as AppWithCommands).commands.executeCommandById("deck-dashboard:open-home");
     });
     this.addRibbonIcon("mail", "メールを開く", () => {
-      (this.app as any).commands.executeCommandById("deck-dashboard:open-mail");
+      (this.app as AppWithCommands).commands.executeCommandById("deck-dashboard:open-mail");
     });
 
     this.installAIStatusBar();
@@ -43,7 +60,7 @@ export default class DeckPlugin extends Plugin {
     void watcher.install();
   }
 
-  async onunload(): Promise<void> {
+  onunload(): void {
     if (this.aiUnsubscribe) {
       this.aiUnsubscribe();
       this.aiUnsubscribe = null;
@@ -58,7 +75,7 @@ export default class DeckPlugin extends Plugin {
     item.addClass("nd-ai-statusbar");
     item.setAttribute("aria-label", "AI移譲セッション");
     item.addEventListener("click", () => {
-      const vaultRoot = (this.app.vault.adapter as any).getBasePath?.() as string | undefined;
+      const vaultRoot = (this.app.vault.adapter as BasePathAdapter).getBasePath?.();
       new AISessionListModal({
         app: this.app,
         vaultRoot: vaultRoot ?? "",

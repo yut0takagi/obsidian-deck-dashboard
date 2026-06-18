@@ -14,6 +14,23 @@ interface Settings {
   pjtField: string;
 }
 
+/** Narrow view of a note's frontmatter: arbitrary keys with unknown values. */
+type Frontmatter = Record<string, unknown>;
+
+/** Read a file's frontmatter as a typed record (empty when absent). */
+function readFrontmatter(ctx: WidgetContext, file: TFile): Frontmatter {
+  return ctx.app.metadataCache.getFileCache(file)?.frontmatter ?? {};
+}
+
+/** Stringify an unknown frontmatter value (mirrors `String(...)` semantics). */
+function fmString(v: unknown): string {
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean" || v == null) return String(v);
+  if (Array.isArray(v)) return v.join(",");
+  // Plain objects stringify as "[object Object]" — same as String(v).
+  return Object.prototype.toString.call(v);
+}
+
 const DAY_MS = 86400000;
 
 const CHART_LABELS: Record<ChartType, string> = {
@@ -108,12 +125,12 @@ async function renderTasksCompleted(
   ctx: WidgetContext
 ): Promise<void> {
   const folder = settings.folder.replace(/\/+$/, "") + "/";
-  const files: TFile[] = (ctx.app.vault as any).getMarkdownFiles();
+  const files: TFile[] = ctx.app.vault.getMarkdownFiles();
   const today = startOfDay(new Date());
-  const buckets: number[] = new Array(30).fill(0);
+  const buckets: number[] = new Array<number>(30).fill(0);
   for (const f of files) {
     if (!f.path.startsWith(folder)) continue;
-    const fm = (ctx.app as any).metadataCache.getFileCache(f)?.frontmatter ?? {};
+    const fm = readFrontmatter(ctx, f);
     if (fm[settings.statusField] !== "完了") continue;
     // Use file mtime as completion timestamp proxy
     const dayIdx = Math.floor((today.getTime() - startOfDay(new Date(f.stat.mtime)).getTime()) / DAY_MS);
@@ -128,9 +145,9 @@ async function renderNotesCreated(
   ctx: WidgetContext
 ): Promise<void> {
   void settings;
-  const files: TFile[] = (ctx.app.vault as any).getMarkdownFiles();
+  const files: TFile[] = ctx.app.vault.getMarkdownFiles();
   const today = startOfDay(new Date());
-  const buckets: number[] = new Array(30).fill(0);
+  const buckets: number[] = new Array<number>(30).fill(0);
   for (const f of files) {
     const dayIdx = Math.floor((today.getTime() - startOfDay(new Date(f.stat.ctime)).getTime()) / DAY_MS);
     if (dayIdx >= 0 && dayIdx < 30) buckets[29 - dayIdx]++;
@@ -144,13 +161,13 @@ async function renderTasksByPjt(
   ctx: WidgetContext
 ): Promise<void> {
   const folder = settings.folder.replace(/\/+$/, "") + "/";
-  const files: TFile[] = (ctx.app.vault as any).getMarkdownFiles();
+  const files: TFile[] = ctx.app.vault.getMarkdownFiles();
   const counts = new Map<string, number>();
   for (const f of files) {
     if (!f.path.startsWith(folder)) continue;
-    const fm = (ctx.app as any).metadataCache.getFileCache(f)?.frontmatter ?? {};
+    const fm = readFrontmatter(ctx, f);
     if (fm[settings.statusField] === "完了") continue;
-    const pjt = String(fm[settings.pjtField] ?? "(なし)");
+    const pjt = fmString(fm[settings.pjtField] ?? "(なし)");
     counts.set(pjt, (counts.get(pjt) ?? 0) + 1);
   }
   const entries = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -163,12 +180,12 @@ async function renderTasksByStatus(
   ctx: WidgetContext
 ): Promise<void> {
   const folder = settings.folder.replace(/\/+$/, "") + "/";
-  const files: TFile[] = (ctx.app.vault as any).getMarkdownFiles();
+  const files: TFile[] = ctx.app.vault.getMarkdownFiles();
   const counts = new Map<string, number>();
   for (const f of files) {
     if (!f.path.startsWith(folder)) continue;
-    const fm = (ctx.app as any).metadataCache.getFileCache(f)?.frontmatter ?? {};
-    const s = String(fm[settings.statusField] ?? "(なし)");
+    const fm = readFrontmatter(ctx, f);
+    const s = fmString(fm[settings.statusField] ?? "(なし)");
     counts.set(s, (counts.get(s) ?? 0) + 1);
   }
   const order = ["未着手", "作業中", "レビュー待ち", "完了"];
@@ -203,8 +220,7 @@ function drawLineChart(el: HTMLElement, values: number[], labels: string[]): voi
     const v = Math.round((max * i) / 4);
     svg.createSvg("text", {
       attr: { x: padL - 4, y: y + 3, "text-anchor": "end", class: "nd-chart-text" },
-      text: String(v),
-    });
+    }).textContent = String(v);
     svg.createSvg("line", {
       attr: { x1: padL, y1: y, x2: W, y2: y, class: "nd-chart-grid" },
     });
@@ -232,8 +248,7 @@ function drawLineChart(el: HTMLElement, values: number[], labels: string[]): voi
     const x = padL + i * stepX;
     svg.createSvg("text", {
       attr: { x, y: H - 4, "text-anchor": "middle", class: "nd-chart-text" },
-      text: labels[i],
-    });
+    }).textContent = labels[i];
   }
 }
 
@@ -250,8 +265,7 @@ function drawBarChart(el: HTMLElement, entries: [string, number][]): void {
     // label
     svg.createSvg("text", {
       attr: { x: padL - 4, y: y + barH / 2 + 4, "text-anchor": "end", class: "nd-chart-text" },
-      text: label.length > 14 ? label.slice(0, 13) + "…" : label,
-    });
+    }).textContent = label.length > 14 ? label.slice(0, 13) + "…" : label;
     // bar bg
     svg.createSvg("rect", {
       attr: { x: padL, y, width: W - padL - 24, height: barH, class: "nd-chart-bar-bg" },
@@ -260,8 +274,7 @@ function drawBarChart(el: HTMLElement, entries: [string, number][]): void {
     svg.createSvg("rect", { attr: { x: padL, y, width: bw, height: barH, class: "nd-chart-bar" } });
     svg.createSvg("text", {
       attr: { x: padL + bw + 4, y: y + barH / 2 + 4, class: "nd-chart-text" },
-      text: String(val),
-    });
+    }).textContent = String(val);
   });
 }
 

@@ -184,16 +184,18 @@ export function serializeFrontmatter(fm: TaskFrontmatter): string {
   ];
   const lines: string[] = [];
   for (const k of keys) {
-    if (fm[k] === undefined || fm[k] === null) continue;
-    lines.push(`${k}: ${fm[k]}`);
+    const val = scalarToString(fm[k]);
+    if (val === null) continue;
+    lines.push(`${k}: ${val}`);
   }
   // Preserve unknown keys in stable order
+  const knownKeys = new Set<string>(keys as string[]);
   for (const k of Object.keys(fm)) {
-    if (keys.includes(k as keyof TaskFrontmatter)) continue;
+    if (knownKeys.has(k)) continue;
     if (k === "sync_meta") continue;
-    const v = fm[k as keyof TaskFrontmatter];
-    if (v === undefined || v === null) continue;
-    lines.push(`${k}: ${v}`);
+    const val = scalarToString(fm[k]);
+    if (val === null) continue;
+    lines.push(`${k}: ${val}`);
   }
   if (fm.sync_meta) {
     lines.push("sync_meta:");
@@ -205,6 +207,19 @@ export function serializeFrontmatter(fm: TaskFrontmatter): string {
       lines.push(`  origin: ${fm.sync_meta.origin}`);
   }
   return lines.join("\n") + "\n";
+}
+
+/**
+ * Serialize a frontmatter scalar (string / number / boolean) to a line value.
+ * Returns null for nullish or non-scalar values so the caller can skip them.
+ * Frontmatter fields are always scalars at runtime; objects (e.g. sync_meta)
+ * are handled separately and never reach here.
+ */
+function scalarToString(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return null;
 }
 
 /**

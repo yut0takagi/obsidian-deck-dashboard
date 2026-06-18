@@ -96,7 +96,7 @@ export class AILogWriter {
     const file = this.app.vault.getAbstractFileByPath(this.path);
     if (file instanceof TFile) {
       try {
-        await this.app.fileManager.processFrontMatter(file, (fm: any) => {
+        await this.app.fileManager.processFrontMatter(file, (fm: Record<string, unknown>) => {
           fm.status = opts.cancelled ? "cancelled" : opts.ok ? "completed" : "error";
           fm.ended = formatDateTime(new Date());
           fm.duration_sec = Math.round(opts.durationMs / 1000);

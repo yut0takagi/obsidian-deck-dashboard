@@ -16,7 +16,7 @@ interface AutoSyncSettings {
  * a short tail afterwards to ignore the writes the sync itself caused).
  */
 export class AutoSyncWatcher {
-  private timer: ReturnType<typeof window.setTimeout> | null = null;
+  private timer: number | null = null;
   private pendingPaths = new Set<string>();
   private lastSyncEnd = 0;
   private sync: SheetsSync;

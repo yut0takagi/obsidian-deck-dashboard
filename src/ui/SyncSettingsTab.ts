@@ -16,10 +16,15 @@ export class SyncSettingsTab extends PluginSettingTab {
     super(app, plugin);
   }
 
-  async display(): Promise<void> {
+  // Synchronous override to satisfy PluginSettingTab.display()'s void signature;
+  // the actual async work is delegated to render().
+  display(): void {
+    void this.render();
+  }
+
+  private async render(): Promise<void> {
     const { containerEl } = this;
     containerEl.empty();
-    new Setting(containerEl).setName("Deck").setHeading();
 
     await this.renderGoogleAuthSection(containerEl);
     await this.renderSelfOwnerSection(containerEl);
@@ -88,7 +93,7 @@ export class SyncSettingsTab extends PluginSettingTab {
     if (hasSheet) {
       new Setting(section)
         .setName("スプシURL")
-        .setDesc(scopeCfg!.spreadsheetUrl ?? "(URL不明)")
+        .setDesc(scopeCfg?.spreadsheetUrl ?? "(URL不明)")
         .addButton((b) =>
           b.setButtonText("ブラウザで開く").onClick(() => {
             if (scopeCfg?.spreadsheetUrl) window.open(scopeCfg.spreadsheetUrl, "_blank");
@@ -96,7 +101,7 @@ export class SyncSettingsTab extends PluginSettingTab {
         );
       new Setting(section)
         .setName("最終同期")
-        .setDesc(scopeCfg!.last_sync ?? "未同期")
+        .setDesc(scopeCfg?.last_sync ?? "未同期")
         .addButton((b) =>
           b.setButtonText("今すぐ同期").onClick(async () => {
             try {
@@ -104,7 +109,7 @@ export class SyncSettingsTab extends PluginSettingTab {
               new Notice(
                 `${title} 同期完了: push ${report.pushed} / pull ${report.pulled}`
               );
-              await this.display();
+              this.display();
             } catch (e) {
               new Notice(`同期失敗: ${(e as Error).message}`);
             }
@@ -122,7 +127,7 @@ export class SyncSettingsTab extends PluginSettingTab {
               next[scope] = {};
               await this.saveConfig(next);
               new Notice(`${title} の接続を解除しました`);
-              await this.display();
+              this.display();
             })
         );
     } else {
@@ -136,7 +141,7 @@ export class SyncSettingsTab extends PluginSettingTab {
             .onClick(async () => {
               try {
                 await sync.setupSheet(scope);
-                await this.display();
+                this.display();
               } catch (e) {
                 new Notice(`Setup失敗: ${(e as Error).message}`);
               }
@@ -192,7 +197,7 @@ export class SyncSettingsTab extends PluginSettingTab {
                 parts.push(`組織 push:${results.org.pushed} pull:${results.org.pulled}`);
               }
               new Notice(`同期完了: ${parts.join(" / ") || "対象なし"}`);
-              await this.display();
+              this.display();
             } catch (e) {
               new Notice(`同期失敗: ${(e as Error).message}`);
             }

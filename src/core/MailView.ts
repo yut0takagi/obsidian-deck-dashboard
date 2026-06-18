@@ -239,47 +239,57 @@ export class MailView extends ItemView {
       const aiBtn = actions.createEl("button", { text: "🤖 AI返信" });
       aiBtn.addEventListener("click", () => void this.openAIReply(m));
       const archiveBtn = actions.createEl("button", { text: "🗄 アーカイブ" });
-      archiveBtn.addEventListener("click", async () => {
-        try {
-          await modifyMessageLabels(this.oauth, m.id, [], ["INBOX"]);
-          new Notice("アーカイブしました");
-          void this.refresh();
-        } catch (e) {
-          new Notice(`失敗: ${(e as Error).message}`);
-        }
+      archiveBtn.addEventListener("click", () => {
+        void (async () => {
+          try {
+            await modifyMessageLabels(this.oauth, m.id, [], ["INBOX"]);
+            new Notice("アーカイブしました");
+            void this.refresh();
+          } catch (e) {
+            new Notice(`失敗: ${(e as Error).message}`);
+          }
+        })();
       });
       const trashBtn = actions.createEl("button", { text: "🗑 ゴミ箱" });
-      trashBtn.addEventListener("click", async () => {
-        try {
-          await trashMessage(this.oauth, m.id);
-          new Notice("ゴミ箱へ移動しました");
-          void this.refresh();
-        } catch (e) {
-          new Notice(`失敗: ${(e as Error).message}`);
-        }
+      trashBtn.addEventListener("click", () => {
+        void (async () => {
+          try {
+            await trashMessage(this.oauth, m.id);
+            new Notice("ゴミ箱へ移動しました");
+            void this.refresh();
+          } catch (e) {
+            new Notice(`失敗: ${(e as Error).message}`);
+          }
+        })();
       });
       if (m.attachments.length > 0) {
         const att = card.createDiv({ cls: "nd-mail-attachments" });
         att.createEl("span", { cls: "nd-muted", text: "📎 添付: " });
         for (const a of m.attachments) {
           const b = att.createEl("button", { text: `${a.filename} (${Math.round(a.size / 1024)}KB)` });
-          b.addEventListener("click", async () => {
-            try {
-              const bytes = await getAttachment(this.oauth, m.id, a.attachmentId);
-              const blob = new Blob([bytes], { type: a.mimeType });
-              const url = URL.createObjectURL(blob);
-              const link = document.createElement("a");
-              link.href = url;
-              link.download = a.filename;
-              document.body.appendChild(link);
-              link.click();
-              link.remove();
-              // Defer revoke: link.click() download is async in Electron/Chromium;
-              // revoking synchronously can cancel the download.
-              setTimeout(() => URL.revokeObjectURL(url), 10_000);
-            } catch (e) {
-              new Notice(`添付取得失敗: ${(e as Error).message}`);
-            }
+          b.addEventListener("click", () => {
+            void (async () => {
+              try {
+                const bytes = await getAttachment(this.oauth, m.id, a.attachmentId);
+                // Copy into a fresh ArrayBuffer-backed view so the value is a
+                // valid BlobPart (Uint8Array<ArrayBufferLike> is not).
+                const buffer = new ArrayBuffer(bytes.byteLength);
+                new Uint8Array(buffer).set(bytes);
+                const blob = new Blob([buffer], { type: a.mimeType });
+                const url = URL.createObjectURL(blob);
+                const link = activeDocument.createElement("a");
+                link.href = url;
+                link.download = a.filename;
+                activeDocument.body.appendChild(link);
+                link.click();
+                link.remove();
+                // Defer revoke: link.click() download is async in Electron/Chromium;
+                // revoking synchronously can cancel the download.
+                window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
+              } catch (e) {
+                new Notice(`添付取得失敗: ${(e as Error).message}`);
+              }
+            })();
           });
         }
       }

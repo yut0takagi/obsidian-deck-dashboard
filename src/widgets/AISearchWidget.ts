@@ -1,11 +1,82 @@
-import { MarkdownRenderer, Notice, Setting } from "obsidian";
-import type { WidgetDefinition, WidgetContext } from "./types";
+import { MarkdownRenderer, Modal, Notice, Setting } from "obsidian";
+import type { App } from "obsidian";
+import type { WidgetDefinition } from "./types";
 import { chat } from "../adapters/anthropic";
 import { runClaudeP } from "../adapters/claudeCode";
 import { wireInternalLinks } from "./linkHandler";
 import { selectCandidates as sharedSelect, ALWAYS_EXCLUDED, DEFAULT_EXCLUDES } from "../core/vaultRetrieval";
 
 type Backend = "claude-code" | "api";
+
+/**
+ * Simple text-prompt modal. Resolves to the entered string on OK/Enter, or
+ * `null` on Cancel/close. Replaces the forbidden `window.prompt()`.
+ */
+class TextPromptModal extends Modal {
+  private value: string;
+  private resolved = false;
+  constructor(
+    app: App,
+    private readonly title: string,
+    private readonly placeholder: string,
+    defaultValue: string,
+    private readonly onClose_: (result: string | null) => void
+  ) {
+    super(app);
+    this.value = defaultValue;
+  }
+
+  onOpen(): void {
+    const { contentEl } = this;
+    contentEl.createEl("h3", { text: this.title });
+    const input = contentEl.createEl("input", {
+      cls: "deck-input-full",
+      attr: { type: "text", placeholder: this.placeholder },
+    });
+    input.value = this.value;
+    input.addEventListener("input", () => (this.value = input.value));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        this.finish(this.value);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        this.finish(null);
+      }
+    });
+    const row = contentEl.createDiv({ cls: "nd-ai-actions" });
+    const okBtn = row.createEl("button", { text: "OK", cls: "mod-cta" });
+    okBtn.addEventListener("click", () => this.finish(this.value));
+    const cancelBtn = row.createEl("button", { text: "キャンセル" });
+    cancelBtn.addEventListener("click", () => this.finish(null));
+    window.setTimeout(() => input.focus(), 0);
+  }
+
+  private finish(result: string | null): void {
+    this.resolved = true;
+    this.onClose_(result);
+    this.close();
+  }
+
+  onClose(): void {
+    this.contentEl.empty();
+    if (!this.resolved) {
+      this.resolved = true;
+      this.onClose_(null);
+    }
+  }
+}
+
+function promptText(
+  app: App,
+  title: string,
+  placeholder: string,
+  defaultValue = ""
+): Promise<string | null> {
+  return new Promise((resolve) => {
+    new TextPromptModal(app, title, placeholder, defaultValue, resolve).open();
+  });
+}
 
 interface Settings {
   backend: Backend;
@@ -47,14 +118,21 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
       const empty = el.createDiv({ cls: "nd-empty" });
       empty.createEl("p", { text: "Anthropic API キーが未設定です (API backend用)。" });
       const btn = empty.createEl("button", { text: "🔑 APIキーを設定", cls: "mod-cta" });
-      btn.addEventListener("click", async () => {
-        const key = window.prompt("Anthropic API key (sk-ant-... 形式):", "");
-        if (!key) return;
-        const next = ((await ctx.plugin.loadData()) ?? {}) as PluginData;
-        next.anthropic_api_key = key.trim();
-        await ctx.plugin.saveData(next);
-        new Notice("APIキーを保存しました");
-        aiSearchWidget.render(el, settings, ctx);
+      btn.addEventListener("click", () => {
+        void (async () => {
+          const key = await promptText(
+            ctx.app,
+            "Anthropic API key",
+            "sk-ant-... 形式",
+            ""
+          );
+          if (!key) return;
+          const next = ((await ctx.plugin.loadData()) ?? {}) as PluginData;
+          next.anthropic_api_key = key.trim();
+          await ctx.plugin.saveData(next);
+          new Notice("APIキーを保存しました");
+          void aiSearchWidget.render(el, settings, ctx);
+        })();
       });
       const note = empty.createEl("p", { cls: "nd-muted" });
       note.setText("または ⚙ から backend を「claude-code」に切替で `claude -p` 経由 (Pro/Maxサブスクで動作・APIキー不要)");
@@ -242,7 +320,7 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
           text: noVaultMatch ? "🌐 該当なし — Webで調べる" : "🌐 Webで調べる",
           cls: noVaultMatch ? "mod-cta" : "",
         });
-        webBtn.addEventListener("click", () => runWebSearch(query));
+        webBtn.addEventListener("click", () => void runWebSearch(query));
       }
 
       const saveBtn = actions.createEl("button", {
@@ -250,33 +328,33 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
         cls: isWebResult ? "mod-cta" : "",
       });
       saveBtn.addEventListener("click", () =>
-        saveAsKnowledge(query, answerMd, isWebResult ? "web" : "vault")
+        void saveAsKnowledge(query, answerMd, isWebResult ? "web" : "vault")
       );
     };
 
-    goBtn.addEventListener("click", submit);
+    goBtn.addEventListener("click", () => void submit());
 
     // Cmd/Ctrl+Enter to submit. Attach in capture phase on document so we
     // beat Obsidian's own hotkey manager (which also runs in capture).
     const cmdEnterHandler = (e: KeyboardEvent): void => {
       if (e.key !== "Enter") return;
       if (!(e.metaKey || e.ctrlKey)) return;
-      if (document.activeElement !== input) return;
+      if (activeDocument.activeElement !== input) return;
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      submit();
+      void submit();
     };
-    document.addEventListener("keydown", cmdEnterHandler, true);
+    activeDocument.addEventListener("keydown", cmdEnterHandler, true);
     ctx.parent.register(() => {
-      document.removeEventListener("keydown", cmdEnterHandler, true);
+      activeDocument.removeEventListener("keydown", cmdEnterHandler, true);
     });
     // Fallback for environments where document-capture is unreachable.
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
         e.stopPropagation();
-        submit();
+        void submit();
       }
     });
 
@@ -284,7 +362,7 @@ export const aiSearchWidget: WidgetDefinition<Settings> = {
     void lastQuery;
     void lastVaultAnswer;
 
-    setTimeout(() => input.focus(), 50);
+    window.setTimeout(() => input.focus(), 50);
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)

@@ -60,59 +60,63 @@ export class MailComposeModal extends Modal {
     const attRow = contentEl.createDiv({ cls: "nd-mail-compose-attrow" });
     const fileInput = attRow.createEl("input", { type: "file", attr: { multiple: "true" } });
     const attList = attRow.createDiv({ cls: "nd-muted" });
-    fileInput.addEventListener("change", async () => {
-      attachments.length = 0;
-      const files = Array.from(fileInput.files ?? []);
-      for (const file of files) {
-        const buf = new Uint8Array(await file.arrayBuffer());
-        attachments.push({ filename: file.name, mimeType: file.type || "application/octet-stream", data: buf });
-      }
-      attList.setText(attachments.length ? `📎 ${attachments.map((a) => a.filename).join(", ")}` : "");
+    fileInput.addEventListener("change", () => {
+      void (async () => {
+        attachments.length = 0;
+        const files = Array.from(fileInput.files ?? []);
+        for (const file of files) {
+          const buf = new Uint8Array(await file.arrayBuffer());
+          attachments.push({ filename: file.name, mimeType: file.type || "application/octet-stream", data: buf });
+        }
+        attList.setText(attachments.length ? `📎 ${attachments.map((a) => a.filename).join(", ")}` : "");
+      })();
     });
 
     const buttons = contentEl.createDiv({ cls: "modal-button-container" });
     const cancel = buttons.createEl("button", { text: "キャンセル" });
     cancel.addEventListener("click", () => this.close());
     const send = buttons.createEl("button", { text: "📤 Gmailで確認して送信", cls: "mod-cta" });
-    send.addEventListener("click", async () => {
-      if (!toInput.value.trim()) {
-        new Notice("宛先(To)が未入力です");
-        return;
-      }
-      if (!bodyInput.value.trim()) {
-        new Notice("本文が空です");
-        return;
-      }
-      send.disabled = true;
-      send.setText("下書き作成中…");
-      try {
-        const input: DraftInput = {
-          to: toInput.value.trim(),
-          cc: ccInput.value.trim() || undefined,
-          subject: subjectInput.value.trim(),
-          bodyText: bodyInput.value,
-          threadId: this.opts.threadId,
-          inReplyTo: this.opts.inReplyTo,
-          references: this.opts.references,
-          attachments: attachments.length ? attachments : undefined,
-        };
-        const result = await createDraft(this.oauth, input);
-        const email = (await getProfile(this.oauth)).emailAddress;
-        const url = result.messageId
-          ? gmailDraftUrl(email, result.messageId)
-          : gmailDraftsListUrl(email);
-        const win = window.open(url, "_blank");
-        if (win) {
-          new Notice("Gmail の下書きを開きました。内容を確認して送信してください。");
-        } else {
-          new Notice(`下書きを作成しました。Gmail のドラフトを開いてください: ${url}`);
+    send.addEventListener("click", () => {
+      void (async () => {
+        if (!toInput.value.trim()) {
+          new Notice("宛先(To)が未入力です");
+          return;
         }
-        this.close();
-      } catch (e) {
-        new Notice(`下書き作成失敗: ${(e as Error).message}`);
-        send.disabled = false;
-        send.setText("📤 Gmailで確認して送信");
-      }
+        if (!bodyInput.value.trim()) {
+          new Notice("本文が空です");
+          return;
+        }
+        send.disabled = true;
+        send.setText("下書き作成中…");
+        try {
+          const input: DraftInput = {
+            to: toInput.value.trim(),
+            cc: ccInput.value.trim() || undefined,
+            subject: subjectInput.value.trim(),
+            bodyText: bodyInput.value,
+            threadId: this.opts.threadId,
+            inReplyTo: this.opts.inReplyTo,
+            references: this.opts.references,
+            attachments: attachments.length ? attachments : undefined,
+          };
+          const result = await createDraft(this.oauth, input);
+          const email = (await getProfile(this.oauth)).emailAddress;
+          const url = result.messageId
+            ? gmailDraftUrl(email, result.messageId)
+            : gmailDraftsListUrl(email);
+          const win = window.open(url, "_blank");
+          if (win) {
+            new Notice("Gmail の下書きを開きました。内容を確認して送信してください。");
+          } else {
+            new Notice(`下書きを作成しました。Gmail のドラフトを開いてください: ${url}`);
+          }
+          this.close();
+        } catch (e) {
+          new Notice(`下書き作成失敗: ${(e as Error).message}`);
+          send.disabled = false;
+          send.setText("📤 Gmailで確認して送信");
+        }
+      })();
     });
   }
 

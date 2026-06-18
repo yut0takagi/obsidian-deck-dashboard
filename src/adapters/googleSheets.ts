@@ -9,11 +9,38 @@ export interface SpreadsheetInfo {
   sheets: Array<{ sheetId: number; title: string }>;
 }
 
+/** Raw Google Sheets API shapes (only the fields this adapter reads). */
+interface RawSheetProperties {
+  sheetId?: number;
+  title?: string;
+}
+
+interface RawSheet {
+  properties?: RawSheetProperties;
+}
+
+interface RawSpreadsheet {
+  spreadsheetId?: string;
+  spreadsheetUrl?: string;
+  sheets?: RawSheet[];
+}
+
+interface RawValueRange {
+  values?: string[][];
+}
+
+interface RawAppendResponse {
+  updates?: {
+    updatedRange?: string;
+    updatedRows?: number;
+  };
+}
+
 async function authed(
   oauth: GoogleOAuth,
   url: string,
   init: { method: "GET" | "POST" | "PUT"; body?: unknown } = { method: "GET" }
-): Promise<any> {
+): Promise<unknown> {
   const token = await oauth.getAccessToken();
   const res = await requestUrl({
     url,
@@ -30,6 +57,17 @@ async function authed(
   return res.json;
 }
 
+function toSpreadsheetInfo(json: RawSpreadsheet): SpreadsheetInfo {
+  return {
+    spreadsheetId: json.spreadsheetId ?? "",
+    spreadsheetUrl: json.spreadsheetUrl ?? "",
+    sheets: (json.sheets ?? []).map((s) => ({
+      sheetId: s.properties?.sheetId ?? 0,
+      title: s.properties?.title ?? "",
+    })),
+  };
+}
+
 export async function createSpreadsheet(
   oauth: GoogleOAuth,
   title: string,
@@ -39,30 +77,22 @@ export async function createSpreadsheet(
     properties: { title },
     sheets: [{ properties: { title: sheetTitle } }],
   };
-  const json = await authed(oauth, SHEETS_API, { method: "POST", body });
-  return {
-    spreadsheetId: json.spreadsheetId,
-    spreadsheetUrl: json.spreadsheetUrl,
-    sheets: (json.sheets ?? []).map((s: any) => ({
-      sheetId: s.properties.sheetId,
-      title: s.properties.title,
-    })),
-  };
+  const json = (await authed(oauth, SHEETS_API, {
+    method: "POST",
+    body,
+  })) as RawSpreadsheet;
+  return toSpreadsheetInfo(json);
 }
 
 export async function getSpreadsheet(
   oauth: GoogleOAuth,
   spreadsheetId: string
 ): Promise<SpreadsheetInfo> {
-  const json = await authed(oauth, `${SHEETS_API}/${spreadsheetId}`);
-  return {
-    spreadsheetId: json.spreadsheetId,
-    spreadsheetUrl: json.spreadsheetUrl,
-    sheets: (json.sheets ?? []).map((s: any) => ({
-      sheetId: s.properties.sheetId,
-      title: s.properties.title,
-    })),
-  };
+  const json = (await authed(
+    oauth,
+    `${SHEETS_API}/${spreadsheetId}`
+  )) as RawSpreadsheet;
+  return toSpreadsheetInfo(json);
 }
 
 export async function readRange(
@@ -70,11 +100,11 @@ export async function readRange(
   spreadsheetId: string,
   range: string
 ): Promise<string[][]> {
-  const json = await authed(
+  const json = (await authed(
     oauth,
     `${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE`
-  );
-  return (json.values ?? []) as string[][];
+  )) as RawValueRange;
+  return json.values ?? [];
 }
 
 export async function writeRange(
@@ -116,11 +146,11 @@ export async function appendRows(
   range: string,
   values: (string | number | null)[][]
 ): Promise<{ updatedRange: string; updatedRows: number }> {
-  const json = await authed(
+  const json = (await authed(
     oauth,
     `${SHEETS_API}/${spreadsheetId}/values/${encodeURIComponent(range)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
     { method: "POST", body: { values } }
-  );
+  )) as RawAppendResponse;
   return {
     updatedRange: json.updates?.updatedRange ?? "",
     updatedRows: json.updates?.updatedRows ?? 0,
@@ -135,7 +165,7 @@ export async function batchUpdate(
   oauth: GoogleOAuth,
   spreadsheetId: string,
   body: BatchUpdateRequest
-): Promise<any> {
+): Promise<unknown> {
   return await authed(oauth, `${SHEETS_API}/${spreadsheetId}:batchUpdate`, {
     method: "POST",
     body,

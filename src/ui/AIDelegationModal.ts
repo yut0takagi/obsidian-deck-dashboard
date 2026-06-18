@@ -3,7 +3,6 @@ import type { StreamEvent } from "../adapters/claudeCodeStream";
 import {
   AISessionRegistry,
   SessionEntry,
-  SessionFinal,
   getAISessionRegistry,
 } from "../core/AISessionRegistry";
 
@@ -98,7 +97,7 @@ export class AIDelegationModal extends Modal {
 
     this.openLogBtn = btnRow.createEl("button", { text: "📄 ログを開く" });
     this.openLogBtn.disabled = true;
-    this.openLogBtn.addEventListener("click", () => this.openLogFile());
+    this.openLogBtn.addEventListener("click", () => void this.openLogFile());
 
     this.abortBtn = btnRow.createEl("button", { text: "🛑 中止" });
     this.abortBtn.disabled = true;
@@ -111,7 +110,7 @@ export class AIDelegationModal extends Modal {
       text: "🚀 AIに渡す",
       cls: "mod-cta",
     });
-    this.runBtn.addEventListener("click", () => this.run());
+    this.runBtn.addEventListener("click", () => void this.run());
 
     this.statusEl = contentEl.createDiv({ cls: "nd-ai-delegate-status nd-muted" });
     this.statusEl.setText("待機中");
@@ -161,9 +160,12 @@ export class AIDelegationModal extends Modal {
     const field = this.opts.statusField ?? "status";
     const next = this.opts.successStatus ?? "レビュー待ち";
     try {
-      await this.app.fileManager.processFrontMatter(this.opts.taskFile, (fm: any) => {
-        fm[field] = next;
-      });
+      await this.app.fileManager.processFrontMatter(
+        this.opts.taskFile,
+        (fm: Record<string, unknown>) => {
+          fm[field] = next;
+        }
+      );
       return true;
     } catch (e) {
       new Notice(`status更新失敗: ${(e as Error).message}`);

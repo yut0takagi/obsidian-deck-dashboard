@@ -65,26 +65,28 @@ export const todayWidget: WidgetDefinition<Settings> = {
       cls: "nd-today-daily-link",
       text: existing instanceof TFile ? "📝 今日の日報を開く" : "📝 今日の日報を作成",
     });
-    dailyLink.addEventListener("click", async (e) => {
+    dailyLink.addEventListener("click", (e) => {
       e.preventDefault();
-      let file = ctx.app.vault.getAbstractFileByPath(dailyPath);
-      if (!(file instanceof TFile)) {
-        // create parent folders
-        const lastSlash = dailyPath.lastIndexOf("/");
-        const folder = dailyPath.slice(0, lastSlash);
-        if (folder && !ctx.app.vault.getAbstractFileByPath(folder)) {
-          await ctx.app.vault.createFolder(folder).catch(() => {});
+      void (async () => {
+        let file = ctx.app.vault.getAbstractFileByPath(dailyPath);
+        if (!(file instanceof TFile)) {
+          // create parent folders
+          const lastSlash = dailyPath.lastIndexOf("/");
+          const folder = dailyPath.slice(0, lastSlash);
+          if (folder && !ctx.app.vault.getAbstractFileByPath(folder)) {
+            await ctx.app.vault.createFolder(folder).catch(() => {});
+          }
+          try {
+            file = await ctx.app.vault.create(dailyPath, `# ${dailyPath.split("/").pop()?.replace(/\.md$/, "") ?? ""}\n\n`);
+          } catch {
+            // race: file created in between
+            file = ctx.app.vault.getAbstractFileByPath(dailyPath);
+          }
         }
-        try {
-          file = await ctx.app.vault.create(dailyPath, `# ${dailyPath.split("/").pop()?.replace(/\.md$/, "") ?? ""}\n\n`);
-        } catch (err) {
-          // race: file created in between
-          file = ctx.app.vault.getAbstractFileByPath(dailyPath);
+        if (file instanceof TFile) {
+          await ctx.app.workspace.getLeaf(false).openFile(file);
         }
-      }
-      if (file instanceof TFile) {
-        await ctx.app.workspace.getLeaf(false).openFile(file);
-      }
+      })();
     });
   },
   renderSettingsForm(container, settings, onChange) {

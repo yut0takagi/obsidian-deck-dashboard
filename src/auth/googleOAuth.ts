@@ -130,10 +130,11 @@ export class GoogleOAuth {
       throw new Error("先にOAuth credentials を設定してください。");
     }
 
-    // Lazy require Node http to avoid mobile bundle issues
-    // eslint-disable-next-line @typescript-eslint/no-var-requires -- Node http/url are desktop-only; lazy require avoids loading them in the mobile bundle
+    // Lazy require Node http/url to avoid pulling them into the mobile bundle.
+    /* eslint-disable @typescript-eslint/no-require-imports, import/no-nodejs-modules, no-undef -- Node http/url are desktop-only; lazy require keeps them out of the mobile bundle */
     const http = require("http") as typeof import("http");
     const url = require("url") as typeof import("url");
+    /* eslint-enable @typescript-eslint/no-require-imports, import/no-nodejs-modules, no-undef */
 
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await sha256Base64Url(codeVerifier);
@@ -234,7 +235,7 @@ async function startLoopbackServer(
         if (q.error) {
           res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
           res.end(`<h1>OAuth エラー</h1><p>${String(q.error)}</p>`);
-          rejectCode(new Error(`OAuth error: ${q.error}`));
+          rejectCode(new Error(`OAuth error: ${String(q.error)}`));
           return;
         }
         if (q.state !== expectedState) {
@@ -268,11 +269,11 @@ async function startLoopbackServer(
         return;
       }
       // Timeout after 5 min
-      const timer = setTimeout(() => {
+      const timer: number = window.setTimeout(() => {
         rejectCode(new Error("認証がタイムアウトしました (5分)。"));
       }, 5 * 60 * 1000);
       const close = () => {
-        clearTimeout(timer);
+        window.clearTimeout(timer);
         server.close();
       };
       resolve({ port: addr.port, codePromise, close });

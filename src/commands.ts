@@ -45,7 +45,7 @@ export function registerCommands(plugin: Plugin): void {
         leaf = workspace.getLeaf("tab");
         await leaf.setViewState({ type: VIEW_TYPE_MAIL, active: true });
       }
-      workspace.revealLeaf(leaf);
+      void workspace.revealLeaf(leaf);
     },
   });
 
@@ -244,8 +244,7 @@ export function registerCommands(plugin: Plugin): void {
 }
 
 function activeDashboardView(plugin: Plugin): DashboardView | null {
-  const leaf = plugin.app.workspace.getActiveViewOfType(DashboardView as any);
-  return (leaf as DashboardView | null) ?? null;
+  return plugin.app.workspace.getActiveViewOfType(DashboardView) ?? null;
 }
 
 async function createNewDashboard(
@@ -271,8 +270,11 @@ async function createNewDashboard(
 async function openHomeDashboard(plugin: Plugin): Promise<void> {
   const folder = normalizePath(DEFAULT_DASHBOARD_FOLDER);
   const homePath = `${folder}/${DEFAULT_HOME_FILENAME}.${DASHBOARD_EXTENSION}`;
-  let file = plugin.app.vault.getAbstractFileByPath(homePath);
-  if (!(file instanceof TFile)) {
+  const existing = plugin.app.vault.getAbstractFileByPath(homePath);
+  let file: TFile;
+  if (existing instanceof TFile) {
+    file = existing;
+  } else {
     if (!plugin.app.vault.getAbstractFileByPath(folder)) {
       await plugin.app.vault.createFolder(folder);
     }
@@ -282,7 +284,7 @@ async function openHomeDashboard(plugin: Plugin): Promise<void> {
     );
     new Notice(`Home dashboard created at ${homePath}`);
   }
-  await openInDashboardView(plugin, file as TFile);
+  await openInDashboardView(plugin, file);
 }
 
 async function resetHomeDashboard(plugin: Plugin): Promise<void> {
@@ -319,7 +321,7 @@ async function openInDashboardView(plugin: Plugin, file: TFile): Promise<void> {
   // so openFile routes to DashboardView automatically.
   const leaf = plugin.app.workspace.getLeaf(false);
   await leaf.openFile(file);
-  plugin.app.workspace.revealLeaf(leaf);
+  void plugin.app.workspace.revealLeaf(leaf);
 }
 
 async function uniquePath(plugin: Plugin, desired: string): Promise<string> {

@@ -1,6 +1,12 @@
 import { Notice, Setting, TFile } from "obsidian";
+import type { App } from "obsidian";
 import type { WidgetDefinition, WidgetContext } from "./types";
 import { AIDelegationModal } from "../ui/AIDelegationModal";
+
+/** Desktop FileSystemAdapter exposes getBasePath(); not in public typings. */
+interface FileSystemAdapterLike {
+  getBasePath?(): string | undefined;
+}
 
 const AI_DELEGATE_COLUMN = "AI移譲";
 const ALL_MEMBERS = "";
@@ -169,7 +175,7 @@ async function renderKanban(
         colEl.removeClass("nd-drag-over");
       }
     });
-    colEl.addEventListener("drop", async (e) => {
+    colEl.addEventListener("drop", (e) => {
       e.preventDefault();
       colEl.removeClass("nd-drag-over");
       const path = e.dataTransfer?.getData("text/plain");
@@ -179,35 +185,38 @@ async function renderKanban(
         new Notice(`ファイルが見つかりません: ${path}`);
         return;
       }
-      try {
-        await ctx.app.fileManager.processFrontMatter(f, (fm: any) => {
-          fm[settings.statusField] = col;
-        });
-        new Notice(`${f.basename} → ${col}`);
-      } catch (err) {
-        new Notice(`更新失敗: ${(err as Error).message}`);
-        return;
-      }
-      // Re-render after metadataCache catches up
-      setTimeout(() => {
-        renderKanban(el, settings, ctx);
-      }, 80);
-
-      // AI delegate: spawn claude session for this task
-      if (col === AI_DELEGATE_COLUMN) {
-        const vaultRoot = (ctx.app.vault.adapter as any).getBasePath?.() as string | undefined;
-        if (!vaultRoot) {
-          new Notice("vaultパス取得失敗のためAI移譲をスキップ");
+      void (async () => {
+        try {
+          await ctx.app.fileManager.processFrontMatter(f, (fm: Record<string, unknown>) => {
+            fm[settings.statusField] = col;
+          });
+          new Notice(`${f.basename} → ${col}`);
+        } catch (err) {
+          new Notice(`更新失敗: ${(err as Error).message}`);
           return;
         }
-        new AIDelegationModal({
-          app: ctx.app,
-          taskFile: f,
-          vaultRoot,
-          statusField: settings.statusField,
-          successStatus: pickSuccessStatus(settings.columns),
-        }).open();
-      }
+        // Re-render after metadataCache catches up
+        window.setTimeout(() => {
+          void renderKanban(el, settings, ctx);
+        }, 80);
+
+        // AI delegate: spawn claude session for this task
+        if (col === AI_DELEGATE_COLUMN) {
+          const adapter = ctx.app.vault.adapter as FileSystemAdapterLike;
+          const vaultRoot = adapter.getBasePath?.();
+          if (!vaultRoot) {
+            new Notice("vaultパス取得失敗のためAI移譲をスキップ");
+            return;
+          }
+          new AIDelegationModal({
+            app: ctx.app,
+            taskFile: f,
+            vaultRoot,
+            statusField: settings.statusField,
+            successStatus: pickSuccessStatus(settings.columns),
+          }).open();
+        }
+      })();
     });
 
     for (const task of colTasks) {
@@ -246,7 +255,7 @@ function renderCard(
     card.removeClass("nd-dragging");
   });
   card.addEventListener("click", () => {
-    ctx.app.workspace.getLeaf(false).openFile(task.file);
+    void ctx.app.workspace.getLeaf(false).openFile(task.file);
   });
 
   card.createDiv({ cls: "nd-kanban-card-title", text: task.title });
@@ -303,7 +312,22 @@ function pickSuccessStatus(columns: string[]): string {
   return "レビュー待ち";
 }
 
-function collectTasks(app: any, settings: Settings): TaskItem[] {
+/**
+ * Stringify a frontmatter value exactly as the previous `String(value)` did,
+ * back when `frontmatter` was typed `any`. Objects are passed through their own
+ * `String(...)` conversion (preserving Array/Date `toString` and the
+ * `[object Object]` fallback for plain objects). The `Object`-typed cast on the
+ * object branch keeps no-base-to-string satisfied without altering output.
+ */
+function stringifyFm(value: unknown): string {
+  if (value !== null && typeof value === "object") {
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
+    return String(value);
+  }
+  return String(value);
+}
+
+function collectTasks(app: App, settings: Settings): TaskItem[] {
   const folder = settings.folder.replace(/\/+$/, "");
   const prefix = folder + "/";
   const items: TaskItem[] = [];
@@ -311,19 +335,19 @@ function collectTasks(app: any, settings: Settings): TaskItem[] {
   for (const f of files) {
     if (!f.path.startsWith(prefix)) continue;
     const cache = app.metadataCache.getFileCache(f);
-    const fm = cache?.frontmatter ?? {};
+    const fm: Record<string, unknown> = cache?.frontmatter ?? {};
     const rawStatus = fm[settings.statusField];
     if (rawStatus == null) continue;
     const fields: Record<string, string> = {};
     for (const fld of settings.showFields) {
       const v = fm[fld];
-      if (v != null && v !== "") fields[fld] = String(v);
+      if (v != null && v !== "") fields[fld] = stringifyFm(v);
     }
     items.push({
       file: f,
       title: f.basename,
       fields,
-      status: String(rawStatus),
+      status: stringifyFm(rawStatus),
       owner: ownerFromPath(f.path, folder),
     });
   }

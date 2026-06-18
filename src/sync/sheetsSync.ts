@@ -8,7 +8,6 @@ import {
   writeRange,
 } from "../adapters/googleSheets";
 import {
-  SyncScope,
   TaskFrontmatter,
   TaskRecord,
   backfillTaskIds,
@@ -19,6 +18,10 @@ import {
   readTask,
   writeTask,
 } from "../core/taskModel";
+import type { SyncScope } from "../core/taskModel";
+
+// Re-export so consumers (e.g. SyncSettingsTab) can import SyncScope from here.
+export type { SyncScope };
 
 const HEADER_ROW = [
   "task_id",
@@ -65,15 +68,17 @@ export interface ScopeConfig {
   last_sync?: string;
 }
 
-export interface SyncConfig {
-  personal?: ScopeConfig;
-  org?: ScopeConfig;
+// Per-scope config keyed by SyncScope so that indexing `config[scope]` with a
+// `SyncScope` value type-checks. `Partial` keeps each scope optional.
+type ScopeConfigMap = Partial<Record<SyncScope, ScopeConfig>>;
+
+export type SyncConfig = ScopeConfigMap & {
   self_owner?: string;
   // legacy v1 fields (auto-migrated on read)
   spreadsheetId?: string;
   spreadsheetUrl?: string;
   last_sync?: string;
-}
+};
 
 const DEFAULT_SELF_OWNER = "髙木";
 
@@ -385,10 +390,10 @@ export class SheetsSync {
     };
     const fmText = Object.entries(fm)
       .filter(([k, v]) => v !== undefined && v !== "" && k !== "sync_meta")
-      .map(([k, v]) => `${k}: ${v}`)
+      .map(([k, v]) => `${k}: ${cellStr(v)}`)
       .join("\n");
     const body = `# ${title}\n\nSheets発のタスク。詳細はSheets側を参照。\n`;
-    const safeTitle = title.replace(/[\/\\:]/g, "_");
+    const safeTitle = title.replace(/[/\\:]/g, "_");
     const folder = `タスク/詳細/${owner}`;
     const existing = this.app.vault.getAbstractFileByPath(folder);
     if (!existing) await this.app.vault.createFolder(folder);
@@ -522,7 +527,12 @@ function mergeBoth(
 
 function cellStr(v: unknown): string {
   if (v === null || v === undefined) return "";
-  return String(v).trim();
+  if (typeof v === "object") return JSON.stringify(v).trim();
+  if (typeof v === "string") return v.trim();
+  if (typeof v === "number" || typeof v === "boolean" || typeof v === "bigint") {
+    return String(v).trim();
+  }
+  return "";
 }
 
 /**

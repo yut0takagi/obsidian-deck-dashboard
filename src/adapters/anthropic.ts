@@ -13,6 +13,16 @@ export interface ChatResponse {
 
 const ENDPOINT = "https://api.anthropic.com/v1/messages";
 
+interface AnthropicContentBlock {
+  type: string;
+  text?: string;
+}
+
+interface AnthropicResponse {
+  content?: AnthropicContentBlock[];
+  usage?: { input_tokens?: number; output_tokens?: number };
+}
+
 export async function chat(
   apiKey: string,
   model: string,
@@ -39,10 +49,10 @@ export async function chat(
   if (res.status >= 400) {
     throw new Error(`Anthropic API HTTP ${res.status}: ${truncate(res.text, 300)}`);
   }
-  const j = res.json as any;
+  const j = res.json as AnthropicResponse;
   const text = (j.content ?? [])
-    .filter((b: any) => b.type === "text")
-    .map((b: any) => b.text)
+    .filter((b) => b.type === "text")
+    .map((b) => b.text ?? "")
     .join("\n");
   return {
     text,

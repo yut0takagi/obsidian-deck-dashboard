@@ -1,4 +1,4 @@
-import { Notice, Setting, TFile, normalizePath } from "obsidian";
+import { Notice, Setting, normalizePath } from "obsidian";
 import type { WidgetDefinition, WidgetContext } from "./types";
 
 interface Settings {
@@ -100,7 +100,7 @@ function renderForm(el: HTMLElement, settings: Settings, ctx: WidgetContext): vo
   });
   titleInput.addEventListener("input", () => (state.title = titleInput.value));
   titleInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void submit();
   });
 
   // Compact row with key fields
@@ -133,11 +133,11 @@ function renderForm(el: HTMLElement, settings: Settings, ctx: WidgetContext): vo
   // Submit
   const btnRow = form.createDiv({ cls: "nd-task-btn-row" });
   const submitBtn = btnRow.createEl("button", { cls: "mod-cta", text: "＋ タスク追加" });
-  submitBtn.addEventListener("click", submit);
+  submitBtn.addEventListener("click", () => void submit());
   const hint = btnRow.createSpan({ cls: "nd-muted nd-task-hint", text: "⌘+Enter でも追加" });
   void hint;
 
-  setTimeout(() => titleInput.focus(), 50);
+  window.setTimeout(() => titleInput.focus(), 50);
 
   async function submit(): Promise<void> {
     const title = state.title.trim();
