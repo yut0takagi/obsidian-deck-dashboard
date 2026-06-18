@@ -11,11 +11,13 @@ import { ganttWidget } from "./GanttWidget";
 import { taskCreatorWidget } from "./TaskCreatorWidget";
 import { chartsWidget } from "./ChartsWidget";
 import { aiSearchWidget } from "./AISearchWidget";
+import { mailWidget } from "./MailWidget";
 
 export function registerBuiltinWidgets(): void {
   widgetRegistry.register(todayWidget);
   widgetRegistry.register(taskCreatorWidget);
   widgetRegistry.register(aiSearchWidget);
+  widgetRegistry.register(mailWidget);
   widgetRegistry.register(markdownWidget);
   widgetRegistry.register(noteEmbedWidget);
   widgetRegistry.register(dataviewWidget);
