@@ -75,3 +75,125 @@ async function authed(
 }
 
 export { authed as __authed };
+
+// ---------- types ----------
+
+export interface GmailAttachmentMeta {
+  attachmentId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+}
+
+export interface GmailMessage {
+  id: string;
+  threadId: string;
+  from: string;
+  to: string;
+  cc: string;
+  subject: string;
+  date: Date;
+  snippet: string;
+  bodyText: string;
+  bodyHtml: string;
+  labelIds: string[];
+  attachments: GmailAttachmentMeta[];
+  messageIdHeader: string;
+  references: string;
+}
+
+export interface GmailThread {
+  id: string;
+  messages: GmailMessage[];
+}
+
+export interface GmailThreadSummary {
+  id: string;
+  subject: string;
+  from: string;
+  date: Date;
+  snippet: string;
+  unread: boolean;
+  messageCount: number;
+}
+
+export interface GmailLabel {
+  id: string;
+  name: string;
+  type: string;
+}
+
+// ---------- parsers (pure) ----------
+
+export function getHeader(headers: any[], name: string): string {
+  const lower = name.toLowerCase();
+  const h = (headers ?? []).find((x) => (x.name ?? "").toLowerCase() === lower);
+  return h?.value ?? "";
+}
+
+function collectParts(
+  payload: any,
+  acc: { text: string[]; html: string[]; attachments: GmailAttachmentMeta[] }
+): void {
+  if (!payload) return;
+  const mime = payload.mimeType ?? "";
+  if (payload.filename && payload.body?.attachmentId) {
+    acc.attachments.push({
+      attachmentId: payload.body.attachmentId,
+      filename: payload.filename,
+      mimeType: mime,
+      size: payload.body.size ?? 0,
+    });
+  } else if (mime === "text/plain" && payload.body?.data) {
+    acc.text.push(base64UrlDecode(payload.body.data));
+  } else if (mime === "text/html" && payload.body?.data) {
+    acc.html.push(base64UrlDecode(payload.body.data));
+  }
+  for (const part of payload.parts ?? []) collectParts(part, acc);
+}
+
+export function parseMessage(resource: any): GmailMessage {
+  const headers = resource.payload?.headers ?? [];
+  const acc = { text: [] as string[], html: [] as string[], attachments: [] as GmailAttachmentMeta[] };
+  collectParts(resource.payload, acc);
+  const dateStr = getHeader(headers, "Date");
+  return {
+    id: resource.id ?? "",
+    threadId: resource.threadId ?? "",
+    from: getHeader(headers, "From"),
+    to: getHeader(headers, "To"),
+    cc: getHeader(headers, "Cc"),
+    subject: getHeader(headers, "Subject"),
+    date: dateStr ? new Date(dateStr) : new Date(0),
+    snippet: resource.snippet ?? "",
+    bodyText: acc.text.join("\n").trim(),
+    bodyHtml: acc.html.join("\n").trim(),
+    labelIds: resource.labelIds ?? [],
+    attachments: acc.attachments,
+    messageIdHeader: getHeader(headers, "Message-ID"),
+    references: getHeader(headers, "References"),
+  };
+}
+
+function stripRe(subject: string): string {
+  return subject.replace(/^((re|fwd?|転送)\s*:\s*)+/i, "").trim();
+}
+
+export function summarizeThread(thread: any): GmailThreadSummary {
+  const messages = thread.messages ?? [];
+  const first = messages[0];
+  const last = messages[messages.length - 1] ?? first;
+  const firstHeaders = first?.payload?.headers ?? [];
+  const lastHeaders = last?.payload?.headers ?? [];
+  const unread = messages.some((m: any) => (m.labelIds ?? []).includes("UNREAD"));
+  const dateStr = getHeader(lastHeaders, "Date");
+  return {
+    id: thread.id ?? "",
+    subject: stripRe(getHeader(firstHeaders, "Subject")) || "(件名なし)",
+    from: getHeader(lastHeaders, "From"),
+    date: dateStr ? new Date(dateStr) : new Date(0),
+    snippet: thread.snippet ?? last?.snippet ?? "",
+    unread,
+    messageCount: messages.length,
+  };
+}
