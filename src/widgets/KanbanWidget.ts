@@ -3,6 +3,7 @@ import type { WidgetDefinition, WidgetContext } from "./types";
 import { AIDelegationModal } from "../ui/AIDelegationModal";
 
 const AI_DELEGATE_COLUMN = "AI移譲";
+const ALL_MEMBERS = "";
 
 interface Settings {
   folder: string;
@@ -17,6 +18,31 @@ interface TaskItem {
   title: string;
   fields: Record<string, string>;
   status: string;
+  owner: string; // member subfolder name, or "" for flat-level
+}
+
+// Ephemeral per-widget state (member tab selection). Survives re-renders but
+// not full reloads — reset to "全員" on plugin restart.
+interface KanbanViewState {
+  selectedMember: string;
+}
+const kanbanState = new WeakMap<HTMLElement, KanbanViewState>();
+
+function getKanbanState(el: HTMLElement): KanbanViewState {
+  let s = kanbanState.get(el);
+  if (!s) {
+    s = { selectedMember: ALL_MEMBERS };
+    kanbanState.set(el, s);
+  }
+  return s;
+}
+
+function ownerFromPath(path: string, baseFolder: string): string {
+  const prefix = baseFolder.replace(/\/+$/, "") + "/";
+  if (!path.startsWith(prefix)) return "";
+  const rest = path.slice(prefix.length);
+  const parts = rest.split("/");
+  return parts.length >= 2 ? parts[0] : "";
 }
 
 export const kanbanWidget: WidgetDefinition<Settings> = {
@@ -100,7 +126,21 @@ async function renderKanban(
   el.empty();
   el.addClass("nd-widget-kanban");
 
-  const tasks = collectTasks(ctx.app, settings);
+  const state = getKanbanState(el);
+  const allTasks = collectTasks(ctx.app, settings);
+
+  // Member tabs
+  const members = Array.from(new Set(allTasks.map((t) => t.owner).filter(Boolean))).sort();
+  renderMemberTabs(el, members, state.selectedMember, (next) => {
+    state.selectedMember = next;
+    void renderKanban(el, settings, ctx);
+  });
+
+  const tasks =
+    state.selectedMember === ALL_MEMBERS
+      ? allTasks
+      : allTasks.filter((t) => t.owner === state.selectedMember);
+
   const board = el.createDiv({ cls: "nd-kanban-board" });
 
   const cols = settings.hideCompleted
@@ -284,7 +324,30 @@ function collectTasks(app: any, settings: Settings): TaskItem[] {
       title: f.basename,
       fields,
       status: String(rawStatus),
+      owner: ownerFromPath(f.path, folder),
     });
   }
   return items;
+}
+
+/**
+ * Render a horizontal tab bar with "全員" + each discovered member.
+ * Shared between Kanban and Gantt (re-exported from this module).
+ */
+export function renderMemberTabs(
+  parent: HTMLElement,
+  members: string[],
+  selected: string,
+  onSelect: (member: string) => void
+): void {
+  const bar = parent.createDiv({ cls: "nd-member-tabs" });
+  const mkTab = (label: string, value: string) => {
+    const btn = bar.createEl("button", {
+      text: label,
+      cls: "nd-member-tab" + (selected === value ? " nd-member-tab-active" : ""),
+    });
+    btn.addEventListener("click", () => onSelect(value));
+  };
+  mkTab("全員", ALL_MEMBERS);
+  for (const m of members) mkTab(m, m);
 }

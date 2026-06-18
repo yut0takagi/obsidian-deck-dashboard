@@ -1,6 +1,9 @@
 import { Setting, TFile } from "obsidian";
 import type { WidgetDefinition, WidgetContext } from "./types";
 import { parseMarkwhen, type MwEvent } from "../adapters/markwhen";
+import { renderMemberTabs } from "./KanbanWidget";
+
+const ALL_MEMBERS = "";
 
 type SourceMode = "frontmatter" | "markwhen";
 
@@ -32,6 +35,7 @@ interface Bar {
   tags: string[];
   done: boolean;
   isGroupHeader: boolean;
+  owner: string; // タスク/詳細/{owner}/foo から抽出（flat or 未割当 = ""）
   onClick?: () => void;
   tooltip?: string;
 }
@@ -44,8 +48,17 @@ const ZOOM_LEVELS = [8, 12, 16, 24, 32, 48, 64];
 interface GanttViewState {
   zoomIdx: number;
   offsetDays: number;
+  selectedMember: string;
 }
 const viewState = new WeakMap<HTMLElement, GanttViewState>();
+
+function ownerFromPath(path: string, baseFolder: string): string {
+  const prefix = baseFolder.replace(/\/+$/, "") + "/";
+  if (!path.startsWith(prefix)) return "";
+  const rest = path.slice(prefix.length);
+  const parts = rest.split("/");
+  return parts.length >= 2 ? parts[0] : "";
+}
 
 export const ganttWidget: WidgetDefinition<Settings> = {
   type: "gantt",
@@ -176,10 +189,11 @@ async function renderGantt(
   el.empty();
   el.addClass("nd-widget-gantt");
 
-  // Ephemeral view state — zoom + manual shift
+  // Ephemeral view state — zoom + manual shift + member tab
   const state: GanttViewState = viewState.get(el) ?? {
     zoomIdx: nearestZoomIdx(settings.dayWidth),
     offsetDays: 0,
+    selectedMember: ALL_MEMBERS,
   };
   viewState.set(el, state);
   const dayWidth = ZOOM_LEVELS[state.zoomIdx];
@@ -248,6 +262,16 @@ async function renderGantt(
   }
 
   if (settings.hideCompleted) bars = bars.filter((b) => !b.done);
+
+  // Member tabs (auto-discover from bar owners)
+  const members = Array.from(new Set(bars.map((b) => b.owner).filter(Boolean))).sort();
+  renderMemberTabs(el, members, state.selectedMember, (next) => {
+    state.selectedMember = next;
+    renderGantt(el, settings, ctx);
+  });
+  if (state.selectedMember !== ALL_MEMBERS) {
+    bars = bars.filter((b) => b.owner === state.selectedMember);
+  }
 
   if (bars.length === 0) {
     el.createDiv({
@@ -463,8 +487,10 @@ async function collectFromMarkwhen(
       (ev.group ? `\n[${ev.group}]` : "") +
       (ev.tags.length ? `\n#${ev.tags.join(" #")}` : "");
     let onClick: (() => void) | undefined;
+    let owner = "";
     if (ev.link) {
       const path = normalizeLinkPath(ev.link);
+      owner = ownerFromPath(path, settings.folder);
       onClick = () => {
         const target = ctx.app.metadataCache.getFirstLinkpathDest(path, settings.markwhenPath);
         if (target instanceof TFile) {
@@ -481,6 +507,7 @@ async function collectFromMarkwhen(
       tags: ev.tags,
       done,
       isGroupHeader: ev.isGroupHeader,
+      owner,
       onClick,
       tooltip,
     });
@@ -527,6 +554,7 @@ function collectFromFrontmatter(
       tags: [],
       done,
       isGroupHeader: false,
+      owner: ownerFromPath(f.path, settings.folder),
       onClick: () => ctx.app.workspace.getLeaf(false).openFile(f),
       tooltip: `${f.basename}\n${fmt(start)} → ${fmt(end)}\n${pjt}${status ? " • " + status : ""}`,
     });
