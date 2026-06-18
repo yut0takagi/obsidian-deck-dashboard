@@ -14,6 +14,7 @@ import {
 } from "../adapters/gmail";
 import { MailComposeModal } from "../ui/MailComposeModal";
 import { loadMailConfig, type MailConfig } from "./mailConfig";
+import { generateReplyDraft } from "../ai/mailAssist";
 
 const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify";
 
@@ -24,6 +25,7 @@ export class MailView extends ItemView {
   private listEl!: HTMLElement;
   private detailEl!: HTMLElement;
   private pendingThreadId: string | null = null;
+  private currentThread: import("../adapters/gmail").GmailThread | null = null;
 
   constructor(leaf: WorkspaceLeaf, plugin: Plugin) {
     super(leaf);
@@ -95,6 +97,31 @@ export class MailView extends ItemView {
     }).open();
   }
 
+  private async openAIReply(m: GmailMessage): Promise<void> {
+    if (!this.currentThread) return;
+    const notice = new Notice("AI返信ドラフト生成中…（スレッド要約＋vault背景）", 0);
+    try {
+      const result = await generateReplyDraft(this.app, this.plugin, this.currentThread, this.config);
+      notice.hide();
+      const f = buildReplyFields(m);
+      const sources = result.sources.length
+        ? `\n\n[参照: ${result.sources.join(", ")}]`
+        : "";
+      new MailComposeModal(this.app, this.plugin, {
+        mode: "reply",
+        to: f.to,
+        subject: f.subject,
+        threadId: f.threadId,
+        inReplyTo: f.inReplyTo,
+        references: f.references,
+        bodyText: result.replyDraft + sources,
+      }).open();
+    } catch (e) {
+      notice.hide();
+      new Notice(`AI返信失敗: ${(e as Error).message}`);
+    }
+  }
+
   private async ensureAuth(): Promise<boolean> {
     const tokens = await this.oauth.getTokens();
     if (!hasScope(tokens, GMAIL_SCOPE)) {
@@ -146,6 +173,7 @@ export class MailView extends ItemView {
     try {
       const thread = await getThread(this.oauth, threadId);
       status.remove();
+      this.currentThread = thread;
       this.renderThread(thread);
       // 既読化: 未読メッセージから UNREAD を外す
       for (const m of thread.messages) {
@@ -174,6 +202,8 @@ export class MailView extends ItemView {
       replyBtn.addEventListener("click", () => this.openReply(m));
       const fwdBtn = actions.createEl("button", { text: "↪ 転送" });
       fwdBtn.addEventListener("click", () => this.openForward(m));
+      const aiBtn = actions.createEl("button", { text: "🤖 AI返信" });
+      aiBtn.addEventListener("click", () => void this.openAIReply(m));
       if (m.attachments.length > 0) {
         const att = card.createDiv({ cls: "nd-mail-attachments nd-muted" });
         att.setText(`📎 添付 ${m.attachments.length}件: ${m.attachments.map((a) => a.filename).join(", ")}`);
