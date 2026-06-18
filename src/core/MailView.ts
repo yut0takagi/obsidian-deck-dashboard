@@ -6,9 +6,13 @@ import {
   getThread,
   modifyMessageLabels,
   senderDisplayName,
+  buildReplyFields,
+  quoteForReply,
   type GmailThreadSummary,
   type GmailThread,
+  type GmailMessage,
 } from "../adapters/gmail";
+import { MailComposeModal } from "../ui/MailComposeModal";
 import { loadMailConfig, type MailConfig } from "./mailConfig";
 
 const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify";
@@ -67,7 +71,28 @@ export class MailView extends ItemView {
   }
 
   private openCompose(): void {
-    new Notice("作成機能は次フェーズで実装されます");
+    new MailComposeModal(this.app, this.plugin, { mode: "new" }).open();
+  }
+
+  private openReply(m: GmailMessage): void {
+    const f = buildReplyFields(m);
+    new MailComposeModal(this.app, this.plugin, {
+      mode: "reply",
+      to: f.to,
+      subject: f.subject,
+      threadId: f.threadId,
+      inReplyTo: f.inReplyTo,
+      references: f.references,
+      bodyText: quoteForReply(m),
+    }).open();
+  }
+
+  private openForward(m: GmailMessage): void {
+    new MailComposeModal(this.app, this.plugin, {
+      mode: "forward",
+      subject: /^fwd?:/i.test(m.subject) ? m.subject : `Fwd: ${m.subject}`,
+      bodyText: `\n\n---------- Forwarded message ----------\nFrom: ${m.from}\nDate: ${m.date.toLocaleString()}\nSubject: ${m.subject}\n\n${m.bodyText}`,
+    }).open();
   }
 
   private async ensureAuth(): Promise<boolean> {
@@ -144,6 +169,11 @@ export class MailView extends ItemView {
       head.createEl("div", { cls: "nd-mail-msg-date nd-muted", text: m.date.toLocaleString() });
       card.createEl("div", { cls: "nd-mail-msg-subject", text: m.subject });
       card.createEl("pre", { cls: "nd-mail-msg-body", text: m.bodyText || m.snippet });
+      const actions = card.createDiv({ cls: "nd-mail-msg-actions" });
+      const replyBtn = actions.createEl("button", { text: "↩ 返信" });
+      replyBtn.addEventListener("click", () => this.openReply(m));
+      const fwdBtn = actions.createEl("button", { text: "↪ 転送" });
+      fwdBtn.addEventListener("click", () => this.openForward(m));
       if (m.attachments.length > 0) {
         const att = card.createDiv({ cls: "nd-mail-attachments nd-muted" });
         att.setText(`📎 添付 ${m.attachments.length}件: ${m.attachments.map((a) => a.filename).join(", ")}`);
