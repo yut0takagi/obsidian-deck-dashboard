@@ -1,6 +1,7 @@
 import { App, TFile, normalizePath } from "obsidian";
 import type { StreamEvent } from "./claudeCodeStream";
 import { requireSafeVaultPath, sanitizeFileTitle } from "../core/safePath";
+import { t } from "../core/i18n";
 
 /**
  * Writes an AI delegation run to its own markdown file in real-time,
@@ -34,18 +35,18 @@ export class AILogWriter {
       `status: running`,
       "---",
       "",
-      "# AI移譲ログ",
+      t().aiLogWriterAiDelegationLog,
       "",
-      `- **タスク**: [[${opts.taskPath}]]`,
-      `- **モード**: \`${opts.permissionMode}\``,
+      t().aiLogWriterTask(opts.taskPath),
+      t().aiLogWriterMode(opts.permissionMode),
       "",
-      "## 指示",
+      t().aiLogWriterInstructions,
       "",
       "```",
       opts.prompt,
       "```",
       "",
-      "## 実行トレース",
+      t().aiLogWriterExecutionTrace,
       "",
     ];
     await this.app.vault.adapter.write(this.path, lines.join("\n"));
@@ -72,11 +73,11 @@ export class AILogWriter {
     } else if (e.kind === "tool_result") {
       line = `  - ${e.isError ? "❌" : "✓"} ${oneline(e.text)}\n`;
     } else if (e.kind === "result") {
-      line = `\n### ✅ 結果\n\n${e.text ?? ""}\n\n`;
+      line = t().aiLogWriterResult(e.text ?? "");
     } else if (e.kind === "stderr") {
       line = `- \`${ts}\` ⚠️ stderr: ${oneline(e.text)}\n`;
     } else if (e.kind === "error") {
-      line = `\n### ❌ エラー\n\n${e.text ?? ""}\n\n`;
+      line = t().aiLogWriterError(e.text ?? "");
     }
     if (line) await this.append(line);
   }
@@ -88,12 +89,12 @@ export class AILogWriter {
     toolCount: number;
   }): Promise<void> {
     const sec = (opts.durationMs / 1000).toFixed(1);
-    const tag = opts.cancelled ? "🛑 中止" : opts.ok ? "✅ 成功" : "❌ 失敗";
+    const tag = opts.cancelled ? t().aiLogWriterStopped : opts.ok ? t().aiLogWriterSucceeded : t().aiLogWriterFailed;
     const footer = [
       "",
       "---",
       "",
-      `**結果**: ${tag} / **所要時間**: ${sec}s / **ツール呼出**: ${opts.toolCount} / **終了**: ${formatDateTime(new Date())}`,
+      t().aiLogWriterResultDurationSToolCalls(tag, sec, opts.toolCount, formatDateTime(new Date())),
       "",
     ].join("\n");
     await this.append(footer);

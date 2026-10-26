@@ -1,6 +1,7 @@
 import { MarkdownRenderer, Setting } from "obsidian";
 import type { WidgetDefinition } from "./types";
 import { wireInternalLinks } from "./linkHandler";
+import { t } from "../core/i18n";
 
 interface Settings {
   content: string;
@@ -9,9 +10,9 @@ interface Settings {
 export const markdownWidget: WidgetDefinition<Settings> = {
   type: "markdown",
   label: "Markdown",
-  description: "自由メモ。Markdown記法で書ける。リンクや見出しも使える。",
+  description: t().markdownAFreeformMarkdownNoteWith,
   defaultSettings: () => ({
-    content: "# メモ\n\nここに自由に書ける。`[[ノート名]]` でリンクも貼れる。",
+    content: t().markdownNotesWriteHereUseNote,
   }),
   async render(el, settings, ctx) {
     el.empty();
@@ -21,7 +22,7 @@ export const markdownWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("内容")
+      .setName(t().markdownContent)
       .setDesc("Markdown")
       .addTextArea((t) => {
         t.setValue(settings.content);

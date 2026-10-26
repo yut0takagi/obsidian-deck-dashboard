@@ -12,6 +12,7 @@ import type { Dashboard, LayoutItem, WidgetInstance } from "./types";
 import { widgetRegistry } from "../widgets";
 import { AddWidgetModal, EditWidgetModal } from "../ui/AddWidgetModal";
 import type { DeckHost } from "./settings";
+import { t } from "./i18n";
 
 /** The plugin as seen by a dashboard view. */
 export type DashboardHost = Plugin & DeckHost;
@@ -136,11 +137,11 @@ export class DashboardView extends TextFileView {
     });
 
     const toolbar = header.createDiv({ cls: "nd-toolbar" });
-    const addBtn = toolbar.createEl("button", { text: "+ ウィジェット追加", cls: "mod-cta" });
+    const addBtn = toolbar.createEl("button", { text: t().dashboardAddWidget, cls: "mod-cta" });
     addBtn.addEventListener("click", () => this.openAddWidget());
 
     const editBtn = toolbar.createEl("button", {
-      text: this.editMode ? "✓ 閲覧モードへ" : "✎ 編集モード",
+      text: this.editMode ? t().dashboardViewMode : t().dashboardEditMode,
     });
     editBtn.addEventListener("click", () => this.toggleEditMode());
 
@@ -151,7 +152,7 @@ export class DashboardView extends TextFileView {
     if (items.length === 0) {
       grid.createEl("p", {
         cls: "nd-empty",
-        text: "ウィジェットがありません。「+ ウィジェット追加」から最初のひとつを追加してください。",
+        text: t().dashboardNoWidgetsYetClickAdd,
       });
       return;
     }
@@ -228,7 +229,7 @@ export class DashboardView extends TextFileView {
 
     const head = wrap.createDiv({ cls: "nd-widget-head" });
     if (this.editMode) {
-      head.createSpan({ cls: "nd-drag-handle", text: "⋮⋮", attr: { title: "ドラッグして並び替え" } });
+      head.createSpan({ cls: "nd-drag-handle", text: "⋮⋮", attr: { title: t().dashboardDragToReorder } });
     }
     const titleEl = head.createEl("div", {
       cls: "nd-widget-title",
@@ -237,11 +238,11 @@ export class DashboardView extends TextFileView {
     titleEl.title = widget.type;
 
     const controls = head.createDiv({ cls: "nd-widget-controls" });
-    const refreshBtn = controls.createEl("button", { text: "↻", attr: { title: "再読み込み" } });
+    const refreshBtn = controls.createEl("button", { text: "↻", attr: { title: t().dashboardReload } });
     refreshBtn.addEventListener("click", () => {
       this.render();
     });
-    const editBtn = controls.createEl("button", { text: "⚙", attr: { title: "編集" } });
+    const editBtn = controls.createEl("button", { text: "⚙", attr: { title: t().dashboardEdit } });
     editBtn.addEventListener("click", () => {
       new EditWidgetModal(
         this.app,
@@ -252,23 +253,23 @@ export class DashboardView extends TextFileView {
     });
 
     if (this.editMode) {
-      const widthBtn = controls.createEl("button", { text: "↔", attr: { title: "幅変更 (4→6→8→10→12→4)" } });
+      const widthBtn = controls.createEl("button", { text: "↔", attr: { title: t().dashboardChangeWidth468 } });
       widthBtn.addEventListener("click", () => {
         layout.w = layout.w >= 12 ? 4 : layout.w + 2;
         this.persist();
         this.render();
       });
-      const heightBtn = controls.createEl("button", { text: "↕", attr: { title: "高さ変更 (+2、最大16でループ)" } });
+      const heightBtn = controls.createEl("button", { text: "↕", attr: { title: t().dashboardChangeHeight2WrapsAfter } });
       heightBtn.addEventListener("click", () => {
         layout.h = layout.h >= 16 ? 2 : layout.h + 2;
         this.persist();
         this.render();
       });
-      const upBtn = controls.createEl("button", { text: "↑", attr: { title: "上へ" } });
+      const upBtn = controls.createEl("button", { text: "↑", attr: { title: t().dashboardMoveUp } });
       upBtn.addEventListener("click", () => {
         this.moveWidget(layout.i, -1);
       });
-      const downBtn = controls.createEl("button", { text: "↓", attr: { title: "下へ" } });
+      const downBtn = controls.createEl("button", { text: "↓", attr: { title: t().dashboardMoveDown } });
       downBtn.addEventListener("click", () => {
         this.moveWidget(layout.i, +1);
       });
@@ -277,7 +278,7 @@ export class DashboardView extends TextFileView {
     const body = wrap.createDiv({ cls: "nd-widget-body" });
     const def = widgetRegistry.get(widget.type);
     if (!def) {
-      body.createEl("p", { cls: "nd-empty", text: `未対応のウィジェット: ${widget.type}` });
+      body.createEl("p", { cls: "nd-empty", text: t().dashboardUnsupportedWidget(widget.type) });
       return;
     }
     const sourcePath = this.file?.path ?? "";
@@ -344,7 +345,7 @@ export class DashboardView extends TextFileView {
     container.empty();
     container.createEl("h2", { text: "Failed to load dashboard" });
     container.createEl("pre", { text: message });
-    const retryBtn = container.createEl("button", { text: "デフォルトで再生成" });
+    const retryBtn = container.createEl("button", { text: t().dashboardRegenerateDefaults });
     retryBtn.addEventListener("click", () => {
       this.dashboard = createDefaultDashboard("Untitled");
       this.persist();

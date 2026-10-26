@@ -2,6 +2,7 @@ import { Setting } from "obsidian";
 import type { WidgetDefinition } from "./types";
 import { GoogleOAuth } from "../auth/googleOAuth";
 import { listEvents, type GCalEvent } from "../adapters/googleCalendar";
+import { t } from "../core/i18n";
 
 interface Settings {
   calendarId: string;
@@ -16,7 +17,7 @@ function startOfToday(): Date {
 }
 
 function formatTimeRange(ev: GCalEvent): string {
-  if (ev.allDay) return "終日";
+  if (ev.allDay) return t().googleCalendarAllDay;
   const fmt = (d: Date) =>
     `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   const sameDay =
@@ -30,11 +31,11 @@ function formatDateHeader(d: Date): string {
   const today = startOfToday();
   const dayMs = 24 * 60 * 60 * 1000;
   const diff = Math.round((d.getTime() - today.getTime()) / dayMs);
-  const wd = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
-  const label = `${d.getMonth() + 1}/${d.getDate()}（${wd}）`;
-  if (diff === 0) return `今日 ${label}`;
-  if (diff === 1) return `明日 ${label}`;
-  if (diff === -1) return `昨日 ${label}`;
+  const wd = t().weekdaysShort[d.getDay()];
+  const label = t().googleCalendarText(d.getMonth() + 1, d.getDate(), wd);
+  if (diff === 0) return t().googleCalendarToday(label);
+  if (diff === 1) return t().googleCalendarTomorrow(label);
+  if (diff === -1) return t().googleCalendarYesterday(label);
   return label;
 }
 
@@ -53,7 +54,7 @@ export const googleCalendarWidget: WidgetDefinition<Settings> = {
   type: "gcal",
   label: "Google Calendar",
   description:
-    "Google Calendar API (OAuth) で予定を取得。プラグイン設定でcredentialと認証が必要。",
+    t().googleCalendarFetchEventsUsingTheGoogle,
   defaultSettings: () => ({
     calendarId: "primary",
     windowDays: 7,
@@ -66,11 +67,11 @@ export const googleCalendarWidget: WidgetDefinition<Settings> = {
     if (!(await oauth.isAuthenticated())) {
       const empty = el.createDiv({ cls: "nd-empty" });
       empty.createEl("p", {
-        text: "認証が必要です。コマンドパレット → 「Google Calendar: Authenticate」",
+        text: t().googleCalendarAuthenticationRequiredOpenTheCommand,
       });
       return;
     }
-    const status = el.createDiv({ cls: "nd-muted", text: "読み込み中…" });
+    const status = el.createDiv({ cls: "nd-muted", text: t().googleCalendarLoading });
     try {
       const timeMin = startOfToday();
       const timeMax = new Date(timeMin);
@@ -84,7 +85,7 @@ export const googleCalendarWidget: WidgetDefinition<Settings> = {
       );
       status.remove();
       if (events.length === 0) {
-        el.createEl("p", { cls: "nd-empty", text: "予定はありません 🎉" });
+        el.createEl("p", { cls: "nd-empty", text: t().googleCalendarNoEvents });
         return;
       }
       const groups = groupByDay(events);
@@ -119,15 +120,15 @@ export const googleCalendarWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("カレンダーID")
-      .setDesc("primary = メインカレンダー / Google CalendarのカレンダーID (xxx@group.calendar.google.com) も可")
+      .setName(t().googleCalendarCalendarId)
+      .setDesc(t().googleCalendarPrimaryYourMainCalendarA)
       .addText((t) => {
         t.setValue(settings.calendarId);
         t.inputEl.addClass("deck-input-full");
         t.onChange((v) => onChange({ ...settings, calendarId: v.trim() || "primary" }));
       });
     new Setting(container)
-      .setName("表示日数")
+      .setName(t().googleCalendarDaysToDisplay)
       .addText((t) =>
         t.setValue(String(settings.windowDays)).onChange((v) => {
           const n = parseInt(v, 10);
@@ -135,7 +136,7 @@ export const googleCalendarWidget: WidgetDefinition<Settings> = {
         })
       );
     new Setting(container)
-      .setName("最大件数")
+      .setName(t().googleCalendarMaximumEvents)
       .addText((t) =>
         t.setValue(String(settings.maxEvents)).onChange((v) => {
           const n = parseInt(v, 10);

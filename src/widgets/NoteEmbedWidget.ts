@@ -1,6 +1,7 @@
 import { MarkdownRenderer, Setting, TFile } from "obsidian";
 import type { WidgetDefinition } from "./types";
 import { wireInternalLinks } from "./linkHandler";
+import { t } from "../core/i18n";
 
 interface Settings {
   notePath: string;
@@ -10,18 +11,18 @@ interface Settings {
 export const noteEmbedWidget: WidgetDefinition<Settings> = {
   type: "note",
   label: "Note Embed",
-  description: "任意のノートをプレビュー表示する。",
+  description: t().noteEmbedPreviewANoteFromYour,
   defaultSettings: () => ({ notePath: "", maxLines: 30 }),
   async render(el, settings, ctx) {
     el.empty();
     el.addClass("nd-widget-note");
     if (!settings.notePath) {
-      el.createEl("p", { cls: "nd-empty", text: "ノートパスが未設定です。設定から指定してください。" });
+      el.createEl("p", { cls: "nd-empty", text: t().noteEmbedNoNotePathConfiguredChoose });
       return;
     }
     const file = ctx.app.vault.getAbstractFileByPath(settings.notePath);
     if (!(file instanceof TFile)) {
-      el.createEl("p", { cls: "nd-empty", text: `ノートが見つかりません: ${settings.notePath}` });
+      el.createEl("p", { cls: "nd-empty", text: t().noteEmbedNoteNotFound(settings.notePath) });
       return;
     }
     const header = el.createDiv({ cls: "nd-note-header" });
@@ -38,14 +39,14 @@ export const noteEmbedWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("ノートパス")
-      .setDesc("vaultルートからの相対パス (例: 自分について.md)")
+      .setName(t().noteEmbedNotePath)
+      .setDesc(t().noteEmbedPathRelativeToTheVault)
       .addText((t) =>
         t.setValue(settings.notePath).onChange((v) => onChange({ ...settings, notePath: v }))
       );
     new Setting(container)
-      .setName("最大行数")
-      .setDesc("プレビューに表示する最大行数")
+      .setName(t().noteEmbedMaximumLines)
+      .setDesc(t().noteEmbedMaximumNumberOfLinesShown)
       .addText((t) =>
         t.setValue(String(settings.maxLines)).onChange((v) => {
           const n = parseInt(v, 10);

@@ -84,7 +84,7 @@ export const ganttWidget: WidgetDefinition<Settings> = {
   type: "gantt",
   label: "Gantt",
   description:
-    "ガントチャート。タスクの frontmatter (期限+工数) か Markwhen (.mw) ファイルから自動生成。ズーム&期間シフト対応。",
+    t().ganttGanttChartBuiltFromTask,
   defaultSettings: () => ({
     source: "frontmatter",
     markwhenPath: "",
@@ -119,58 +119,58 @@ export const ganttWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("ソース")
+      .setName(t().ganttSource)
       .addDropdown((d) =>
         d
-          .addOption("markwhen", "Markwhen (.mw) ファイル")
-          .addOption("frontmatter", "タスクのfrontmatter (期限/工数)")
+          .addOption("markwhen", t().ganttMarkwhenMwFile)
+          .addOption("frontmatter", t().ganttTaskPropertiesDueDateEffort)
           .setValue(settings.source)
           .onChange((v) => onChange({ ...settings, source: v as SourceMode }))
       );
     new Setting(container)
-      .setName("Markwhen ファイルパス")
-      .setDesc(`例: "Projects/plan.mw"。空なら 設定 → Deck の Markwhen ファイルを使います。`)
+      .setName(t().ganttMarkwhenFilePath)
+      .setDesc(t().ganttExampleProjectsPlanMwLeave)
       .addText((text) =>
         text.setValue(settings.markwhenPath).onChange((v) =>
           onChange({ ...settings, markwhenPath: v.trim() })
         )
       );
     new Setting(container)
-      .setName("(frontmatter) ソースフォルダ")
+      .setName(t().ganttTaskSourceFolder)
       .setDesc(t().inheritFolderHint)
       .addText((text) =>
         text.setValue(settings.folder).onChange((v) => onChange({ ...settings, folder: v.trim() }))
       );
     new Setting(container)
-      .setName("(frontmatter) 期限フィールド")
+      .setName(t().ganttDueDateField)
       .addText((t) =>
         t.setValue(settings.deadlineField).onChange((v) =>
           onChange({ ...settings, deadlineField: v.trim() || "期限" })
         )
       );
     new Setting(container)
-      .setName("(frontmatter) 開始フィールド (任意)")
+      .setName(t().ganttStartDateFieldOptional)
       .addText((t) =>
         t.setValue(settings.startField).onChange((v) =>
           onChange({ ...settings, startField: v.trim() })
         )
       );
     new Setting(container)
-      .setName("(frontmatter) 工数フィールド")
+      .setName(t().ganttEffortField)
       .addText((t) =>
         t.setValue(settings.durationField).onChange((v) =>
           onChange({ ...settings, durationField: v.trim() })
         )
       );
     new Setting(container)
-      .setName("(frontmatter) グループ化フィールド")
+      .setName(t().ganttGroupByField)
       .addText((t) =>
         t.setValue(settings.groupByField).onChange((v) =>
           onChange({ ...settings, groupByField: v.trim() })
         )
       );
     new Setting(container)
-      .setName("表示期間: 今日より前 (日)")
+      .setName(t().ganttDaysBeforeToday)
       .addText((t) =>
         t.setValue(String(settings.windowDaysBack)).onChange((v) => {
           const n = parseInt(v, 10);
@@ -178,7 +178,7 @@ export const ganttWidget: WidgetDefinition<Settings> = {
         })
       );
     new Setting(container)
-      .setName("表示期間: 今日より先 (日)")
+      .setName(t().ganttDaysAfterToday)
       .addText((t) =>
         t.setValue(String(settings.windowDaysForward)).onChange((v) => {
           const n = parseInt(v, 10);
@@ -186,8 +186,8 @@ export const ganttWidget: WidgetDefinition<Settings> = {
         })
       );
     new Setting(container)
-      .setName("1日あたりの幅 (px)")
-      .setDesc("デフォルトズーム。実行中は + - ボタンでも変更可")
+      .setName(t().ganttWidthPerDayPx)
+      .setDesc(t().ganttDefaultZoomUseTheAnd)
       .addText((t) =>
         t.setValue(String(settings.dayWidth)).onChange((v) => {
           const n = parseInt(v, 10);
@@ -195,7 +195,7 @@ export const ganttWidget: WidgetDefinition<Settings> = {
         })
       );
     new Setting(container)
-      .setName("行の高さ (px)")
+      .setName(t().ganttRowHeightPx)
       .addText((t) =>
         t.setValue(String(settings.rowHeight)).onChange((v) => {
           const n = parseInt(v, 10);
@@ -203,7 +203,7 @@ export const ganttWidget: WidgetDefinition<Settings> = {
         })
       );
     new Setting(container)
-      .setName("完了タスクを隠す")
+      .setName(t().ganttHideCompletedTasks)
       .addToggle((t) =>
         t.setValue(settings.hideCompleted).onChange((v) =>
           onChange({ ...settings, hideCompleted: v })
@@ -240,22 +240,22 @@ async function renderGantt(
   const tbLeft = toolbar.createDiv({ cls: "nd-gantt-toolbar-left" });
   const tbRight = toolbar.createDiv({ cls: "nd-gantt-toolbar-right" });
 
-  mkBtn(tbLeft, "« 前へ", () => {
+  mkBtn(tbLeft, t().ganttPrevious, () => {
     state.offsetDays -= Math.max(1, Math.floor(settings.windowDaysForward / 2));
     void renderGantt(el, settings, ctx);
   });
-  mkBtn(tbLeft, "今日", () => {
+  mkBtn(tbLeft, t().ganttToday, () => {
     state.offsetDays = 0;
     void renderGantt(el, settings, ctx);
   });
-  mkBtn(tbLeft, "次へ »", () => {
+  mkBtn(tbLeft, t().ganttNext, () => {
     state.offsetDays += Math.max(1, Math.floor(settings.windowDaysForward / 2));
     void renderGantt(el, settings, ctx);
   });
 
   const periodLabel = tbRight.createSpan({
     cls: "nd-gantt-period",
-    text: `${fmt(windowStart)} 〜 ${fmt(windowEnd)} (${totalDays}日 / ${dayWidth}px)`,
+    text: t().ganttDaysPx(fmt(windowStart), fmt(windowEnd), totalDays, dayWidth),
   });
   void periodLabel;
   mkBtn(tbRight, "−", () => {
@@ -270,7 +270,7 @@ async function renderGantt(
       void renderGantt(el, settings, ctx);
     }
   });
-  mkBtn(tbRight, "リセット", () => {
+  mkBtn(tbRight, t().ganttReset, () => {
     state.zoomIdx = nearestZoomIdx(settings.dayWidth);
     state.offsetDays = 0;
     void renderGantt(el, settings, ctx);
@@ -309,8 +309,8 @@ async function renderGantt(
       cls: "nd-empty",
       text:
         settings.source === "markwhen"
-          ? `${settings.markwhenPath} にイベントがありません`
-          : `フォルダ "${settings.folder}" に期限を持つタスクがありません`,
+          ? t().ganttContainsNoEvents(settings.markwhenPath)
+          : t().ganttFolderContainsNoTasksWith(settings.folder),
     });
     return;
   }
@@ -324,7 +324,7 @@ async function renderGantt(
   if (visible.length === 0) {
     el.createDiv({
       cls: "nd-empty",
-      text: `この期間 (${fmt(windowStart)} 〜 ${fmt(windowEnd)}) にイベントなし。« 前へ / 次へ » で期間を動かすか、設定で期間日数を増やしてください。`,
+      text: t().ganttNoEventsInThisPeriod(fmt(windowStart), fmt(windowEnd)),
     });
     return;
   }
@@ -343,7 +343,7 @@ async function renderGantt(
   // Left pane: corner + labels (vertical-only, synced)
   const left = chart.createDiv({ cls: "nd-gantt-left" });
   left.style.width = `${LABEL_W}px`;
-  const leftCorner = left.createDiv({ cls: "nd-gantt-left-corner", text: "タスク" });
+  const leftCorner = left.createDiv({ cls: "nd-gantt-left-corner", text: t().ganttTasks });
   leftCorner.style.height = `${HEADER_H}px`;
   const leftBody = left.createDiv({ cls: "nd-gantt-left-body" });
 
@@ -368,7 +368,7 @@ async function renderGantt(
     if (dayWidth >= 24) {
       cell.createDiv({
         cls: "nd-gantt-weekday",
-        text: ["日", "月", "火", "水", "木", "金", "土"][d.getDay()],
+        text: t().weekdaysShort[d.getDay()],
       });
     }
   }
@@ -493,7 +493,7 @@ async function collectFromMarkwhen(
 ): Promise<{ bars: Bar[]; tagColors: Record<string, string> }> {
   const file = ctx.app.vault.getAbstractFileByPath(settings.markwhenPath);
   if (!(file instanceof TFile)) {
-    throw new Error(`${settings.markwhenPath} が見つかりません`);
+    throw new Error(t().ganttWasNotFound(settings.markwhenPath));
   }
   const raw = await ctx.app.vault.cachedRead(file);
   const doc = parseMarkwhen(raw);

@@ -56,9 +56,9 @@ function ownerFromPath(path: string, baseFolder: string): string {
 
 export const kanbanWidget: WidgetDefinition<Settings> = {
   type: "kanban",
-  label: "Kanban (タスク)",
+  label: t().kanbanKanbanTasks,
   description:
-    "フォルダ内のノートを frontmatter のステータス列でカンバン表示。カードをドラッグして状態変更。",
+    t().kanbanShowNotesAsKanbanCards,
   defaultSettings: () => ({
     folder: "",
     statusField: "status",
@@ -77,21 +77,21 @@ export const kanbanWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("ソースフォルダ")
-      .setDesc(`frontmatterにstatusを持つノートが置かれているフォルダ。${t().inheritFolderHint}`)
+      .setName(t().kanbanSourceFolder)
+      .setDesc(t().kanbanFolderHoldingNotesWithA(t().inheritFolderHint))
       .addText((text) =>
         text.setValue(settings.folder).onChange((v) => onChange({ ...settings, folder: v.trim() }))
       );
     new Setting(container)
-      .setName("ステータスのfrontmatterキー名")
+      .setName(t().kanbanStatusPropertyName)
       .addText((t) =>
         t
           .setValue(settings.statusField)
           .onChange((v) => onChange({ ...settings, statusField: v.trim() || "status" }))
       );
     new Setting(container)
-      .setName("列 (カンマ区切り)")
-      .setDesc("statusに入りうる値。並び順=この順番")
+      .setName(t().kanbanColumnsCommaSeparated)
+      .setDesc(t().kanbanStatusValuesInTheOrder)
       .addText((t) => {
         t.setValue(settings.columns.join(", "));
         t.inputEl.addClass("deck-input-full");
@@ -106,8 +106,8 @@ export const kanbanWidget: WidgetDefinition<Settings> = {
         );
       });
     new Setting(container)
-      .setName("カードに表示するフィールド (カンマ区切り)")
-      .setDesc("frontmatterのキー名")
+      .setName(t().kanbanCardFieldsCommaSeparated)
+      .setDesc(t().kanbanPropertyNamesFromTaskFrontmatter)
       .addText((t) => {
         t.setValue(settings.showFields.join(", "));
         t.inputEl.addClass("deck-input-full");
@@ -122,7 +122,7 @@ export const kanbanWidget: WidgetDefinition<Settings> = {
         );
       });
     new Setting(container)
-      .setName("完了列を隠す")
+      .setName(t().kanbanHideCompletedColumn)
       .addToggle((t) =>
         t
           .setValue(settings.hideCompleted)
@@ -189,7 +189,7 @@ async function renderKanban(
       if (!path) return;
       const f = ctx.app.vault.getAbstractFileByPath(path);
       if (!(f instanceof TFile)) {
-        new Notice(`ファイルが見つかりません: ${path}`);
+        new Notice(t().kanbanFileNotFound(path));
         return;
       }
       void (async () => {
@@ -199,7 +199,7 @@ async function renderKanban(
           });
           new Notice(`${f.basename} → ${col}`);
         } catch (err) {
-          new Notice(`更新失敗: ${(err as Error).message}`);
+          new Notice(t().kanbanUpdateFailed((err as Error).message));
           return;
         }
         // Re-render after metadataCache catches up
@@ -212,7 +212,7 @@ async function renderKanban(
           const adapter = ctx.app.vault.adapter as FileSystemAdapterLike;
           const vaultRoot = adapter.getBasePath?.();
           if (!vaultRoot) {
-            new Notice("vaultパス取得失敗のためAI移譲をスキップ");
+            new Notice(t().kanbanCannotDelegateVaultPathUnavailable);
             return;
           }
           new AIDelegationModal({
@@ -240,7 +240,7 @@ async function renderKanban(
   if (tasks.length === 0) {
     el.createDiv({
       cls: "nd-empty",
-      text: `フォルダ "${settings.folder}" に frontmatter "${settings.statusField}" を持つノートがありません`,
+      text: t().kanbanFolderContainsNoNotesWith(settings.folder, settings.statusField),
     });
   }
 }
@@ -381,6 +381,6 @@ export function renderMemberTabs(
     });
     btn.addEventListener("click", () => onSelect(value));
   };
-  mkTab("全員", ALL_MEMBERS);
+  mkTab(t().kanbanEveryone, ALL_MEMBERS);
   for (const m of members) mkTab(m, m);
 }

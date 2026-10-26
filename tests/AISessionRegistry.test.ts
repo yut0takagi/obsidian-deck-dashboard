@@ -224,7 +224,7 @@ describe("AISessionRegistry", () => {
         permissionMode: "acceptEdits",
         prompt: "p",
       })
-    ).rejects.toThrow(/既に実行中/);
+    ).rejects.toThrow(/already running|既に実行中/);
   });
 
   it("remove() drops finished entries and notifies listeners", async () => {

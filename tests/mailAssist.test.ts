@@ -49,8 +49,8 @@ describe("buildPrompt", () => {
     expect(p).toContain("見積もりをお願いします。");
     expect(p).toContain("Notes/サンプル.md");
     expect(p).toContain("前回は単価で揉めた");
-    expect(p).toMatch(/要約/);
-    expect(p).toMatch(/返信ドラフト/);
+    expect(p).toMatch(/Summary|要約/);
+    expect(p).toMatch(/REPLY DRAFT|返信ドラフト/);
   });
 });
 

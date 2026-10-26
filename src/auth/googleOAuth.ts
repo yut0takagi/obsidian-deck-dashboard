@@ -1,5 +1,6 @@
 import { Notice, Platform, Plugin, requestUrl } from "obsidian";
 import { SecretStore } from "../core/secrets";
+import { t } from "../core/i18n";
 
 export interface OAuthCredentials {
   client_id: string;
@@ -69,7 +70,7 @@ export class GoogleOAuth {
    */
   async getAccessToken(): Promise<string> {
     const tokens = await this.getTokens();
-    if (!tokens) throw new Error("認証されていません。コマンドパレットで認証してください。");
+    if (!tokens) throw new Error(t().googleOAuthNotAuthenticatedAuthenticateFromThe);
     // Refresh if less than 60s remaining
     if (Date.now() < tokens.expires_at - 60_000) {
       return tokens.access_token;
@@ -79,7 +80,7 @@ export class GoogleOAuth {
 
   private async refresh(tokens: StoredTokens): Promise<string> {
     const creds = await this.getCredentials();
-    if (!creds) throw new Error("OAuth credentials が未設定です。");
+    if (!creds) throw new Error(t().googleOAuthOauthCredentialsAreNotConfigured);
     const body = new URLSearchParams({
       client_id: creds.client_id,
       client_secret: creds.client_secret,
@@ -117,11 +118,11 @@ export class GoogleOAuth {
    */
   async authenticate(): Promise<void> {
     if (!Platform.isDesktop) {
-      throw new Error("OAuth認証はデスクトップ版のみ対応です。");
+      throw new Error(t().googleOAuthOauthAuthenticationIsOnlySupported);
     }
     const creds = await this.getCredentials();
     if (!creds) {
-      throw new Error("先にOAuth credentials を設定してください。");
+      throw new Error(t().googleOAuthConfigureOauthCredentialsFirst);
     }
 
     // Lazy require Node http/url to avoid pulling them into the mobile bundle.
@@ -149,7 +150,7 @@ export class GoogleOAuth {
       code_challenge_method: "S256",
     });
     const authUrl = `${AUTH_URL}?${authParams.toString()}`;
-    new Notice("ブラウザでGoogle認証を開きます…");
+    new Notice(t().googleOAuthOpeningGoogleAuthenticationInYour);
     window.open(authUrl, "_blank");
 
     let code: string;
@@ -185,7 +186,7 @@ export class GoogleOAuth {
     };
     if (!json.refresh_token) {
       throw new Error(
-        "refresh_token が返ってきません。Google Cloud Console で「OAuth 同意画面」のテストユーザーに自分を追加して再試行してください。"
+        t().googleOAuthNoRefreshTokenReturnedAdd
       );
     }
     await this.setTokens({
@@ -194,7 +195,7 @@ export class GoogleOAuth {
       expires_at: Date.now() + json.expires_in * 1000,
       scope: json.scope,
     });
-    new Notice("✅ Google Calendar 認証完了");
+    new Notice(t().googleOAuthGoogleAuthenticationComplete);
   }
 }
 
@@ -228,25 +229,25 @@ async function startLoopbackServer(
         const q = parsed.query;
         if (q.error) {
           res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-          res.end(`<h1>OAuth エラー</h1><p>${String(q.error)}</p>`);
+          res.end(t().googleOAuthH1OauthErrorH1P(String(q.error)));
           rejectCode(new Error(`OAuth error: ${String(q.error)}`));
           return;
         }
         if (q.state !== expectedState) {
           res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-          res.end(`<h1>state 不一致</h1>`);
+          res.end(t().googleOAuthH1StateMismatchH1);
           rejectCode(new Error("OAuth state mismatch"));
           return;
         }
         if (typeof q.code !== "string") {
           res.writeHead(400, { "Content-Type": "text/html; charset=utf-8" });
-          res.end(`<h1>code がありません</h1>`);
+          res.end(t().googleOAuthH1MissingAuthorizationCodeH1);
           rejectCode(new Error("OAuth code missing"));
           return;
         }
         res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
         res.end(
-          `<!doctype html><html><head><title>認証完了</title></head><body style="font-family:system-ui;padding:40px;text-align:center;"><h1>✅ 認証完了</h1><p>このタブを閉じてObsidianに戻ってください。</p></body></html>`
+          t().googleOAuthDoctypeHtmlHtmlHeadTitle
         );
         resolveCode(q.code);
       } catch (e) {
@@ -264,7 +265,7 @@ async function startLoopbackServer(
       }
       // Timeout after 5 min
       const timer: number = window.setTimeout(() => {
-        rejectCode(new Error("認証がタイムアウトしました (5分)。"));
+        rejectCode(new Error(t().googleOAuthAuthenticationTimedOut5Minutes));
       }, 5 * 60 * 1000);
       const close = () => {
         window.clearTimeout(timer);

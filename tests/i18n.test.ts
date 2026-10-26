@@ -28,3 +28,24 @@ describe("getStrings", () => {
     expect(getStrings("ja").folderNotSet("タスクのノート")).toContain("タスクのノート");
   });
 });
+
+describe("strings moved out of the code", () => {
+  it("take the same arguments in both languages", () => {
+    const en = getStrings("en") as unknown as Record<string, unknown>;
+    const ja = getStrings("ja") as unknown as Record<string, unknown>;
+    for (const key of Object.keys(en)) {
+      const a = en[key], b = ja[key];
+      expect(typeof a, key).toBe(typeof b);
+      if (typeof a === "function") expect((a as Function).length, key).toBe((b as Function).length);
+    }
+  });
+
+  it("leave no Japanese in the English table", () => {
+    const en = getStrings("en") as unknown as Record<string, unknown>;
+    const ja = /[぀-ヿ一-鿿]/;
+    for (const [key, value] of Object.entries(en)) {
+      const text = typeof value === "function" ? String((value as (...a: string[]) => string)("x", "x", "x", "x")) : String(value);
+      expect(ja.test(text), key).toBe(false);
+    }
+  });
+});

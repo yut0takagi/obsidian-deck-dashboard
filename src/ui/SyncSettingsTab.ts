@@ -7,6 +7,7 @@ import { loadMailConfig, saveMailConfig } from "../core/mailConfig";
 import { renderDeckSettings, type SettingsSectionHost } from "./DeckSettingsSection";
 import { updatePluginData } from "../core/pluginData";
 import { renderCalendarSources } from "./CalendarSourcesSection";
+import { t } from "../core/i18n";
 
 /**
  * Settings tab under "Deck" in Obsidian → Settings → Community plugins.
@@ -33,8 +34,8 @@ export class SyncSettingsTab extends PluginSettingTab {
     await renderCalendarSources(containerEl, this.plugin, this.plugin, () => this.display());
     await this.renderGoogleAuthSection(containerEl);
     await this.renderSelfOwnerSection(containerEl);
-    await this.renderScopeSection(containerEl, "personal", "個人タスク");
-    await this.renderScopeSection(containerEl, "org", "組織タスク");
+    await this.renderScopeSection(containerEl, "personal", t().syncSettingsPersonalTasks);
+    await this.renderScopeSection(containerEl, "org", t().syncSettingsOrganizationTasks);
     await this.renderAutoSyncSection(containerEl);
     await this.renderManualSyncSection(containerEl);
     await this.renderMailSection(containerEl);
@@ -44,14 +45,14 @@ export class SyncSettingsTab extends PluginSettingTab {
     const oauth = new GoogleOAuth(this.plugin);
     const authed = await oauth.isAuthenticated();
     const section = parent.createDiv();
-    new Setting(section).setName("Google 認証").setHeading();
+    new Setting(section).setName(t().syncSettingsGoogleAuthentication).setHeading();
 
     new Setting(section)
-      .setName("認証状態")
-      .setDesc(authed ? "✅ 認証済み" : "❌ 未認証 — まず認証してください")
+      .setName(t().syncSettingsAuthenticationStatus)
+      .setDesc(authed ? t().syncSettingsAuthenticated : t().syncSettingsNotAuthenticatedAuthenticateFirst)
       .addButton((b) =>
         b
-          .setButtonText(authed ? "再認証 / 設定を開く" : "認証する")
+          .setButtonText(authed ? t().syncSettingsReauthenticateOpenSettings : t().syncSettingsAuthenticate)
           .setCta()
           .onClick(() => {
             new GoogleAuthModal(this.app, oauth).open();
@@ -61,7 +62,7 @@ export class SyncSettingsTab extends PluginSettingTab {
 
   private async renderSelfOwnerSection(parent: HTMLElement): Promise<void> {
     const section = parent.createDiv();
-    new Setting(section).setName("自分の名前").setHeading();
+    new Setting(section).setName(t().syncSettingsYourName).setHeading();
 
     const sync = new SheetsSync(this.app, this.plugin, new GoogleOAuth(this.plugin));
     const config = await sync.getConfig();
@@ -69,12 +70,12 @@ export class SyncSettingsTab extends PluginSettingTab {
     new Setting(section)
       .setName("self_owner")
       .setDesc(
-        "個人スコープが対象とするフォルダ名。<タスクのフォルダ>/{この名前}/*.md が個人タスク扱い。組織シートの同期には必須"
+        t().syncSettingsFolderNameForYourPersonal
       )
-      .addText((t) => {
-        t.setValue(config.self_owner ?? "");
-        t.inputEl.placeholder = "例: yamada";
-        t.onChange(async (v) => {
+      .addText((text) => {
+        text.setValue(config.self_owner ?? "");
+        text.inputEl.placeholder = t().syncSettingsExampleYamada;
+        text.onChange(async (v) => {
           const next = await sync.getConfig();
           next.self_owner = v.trim() || undefined;
           await this.saveConfig(next);
@@ -97,58 +98,58 @@ export class SyncSettingsTab extends PluginSettingTab {
 
     if (hasSheet) {
       new Setting(section)
-        .setName("スプシURL")
-        .setDesc(scopeCfg?.spreadsheetUrl ?? "(URL不明)")
+        .setName(t().syncSettingsSpreadsheetUrl)
+        .setDesc(scopeCfg?.spreadsheetUrl ?? t().syncSettingsUrlUnavailable)
         .addButton((b) =>
-          b.setButtonText("ブラウザで開く").onClick(() => {
+          b.setButtonText(t().syncSettingsOpenInBrowser).onClick(() => {
             if (scopeCfg?.spreadsheetUrl) window.open(scopeCfg.spreadsheetUrl, "_blank");
           })
         );
       new Setting(section)
-        .setName("最終同期")
-        .setDesc(scopeCfg?.last_sync ?? "未同期")
+        .setName(t().syncSettingsLastSync)
+        .setDesc(scopeCfg?.last_sync ?? t().syncSettingsNeverSynced)
         .addButton((b) =>
-          b.setButtonText("今すぐ同期").onClick(async () => {
+          b.setButtonText(t().syncSettingsSyncNow).onClick(async () => {
             try {
               const report = await sync.syncScope(scope);
               new Notice(
-                `${title} 同期完了: push ${report.pushed} / pull ${report.pulled}`
+                t().syncSettingsSyncCompletePushPull(title, report.pushed, report.pulled)
               );
               this.display();
             } catch (e) {
-              new Notice(`同期失敗: ${(e as Error).message}`);
+              new Notice(t().syncSettingsSyncFailed((e as Error).message));
             }
           })
         );
       new Setting(section)
-        .setName("接続解除")
-        .setDesc("vault側の設定だけ削除。Sheets本体は残ります。")
+        .setName(t().syncSettingsDisconnect)
+        .setDesc(t().syncSettingsRemovesThisVaultSConnection)
         .addButton((b) =>
           b
-            .setButtonText("解除")
+            .setButtonText(t().syncSettingsDisconnect2)
             .setWarning()
             .onClick(async () => {
               const next = await sync.getConfig();
               next[scope] = {};
               await this.saveConfig(next);
-              new Notice(`${title} の接続を解除しました`);
+              new Notice(t().syncSettingsDisconnected(title));
               this.display();
             })
         );
     } else {
       new Setting(section)
         .setName("Google Sheets")
-        .setDesc("未設定 — 新規スプシを自動作成します")
+        .setDesc(t().syncSettingsNotConfiguredANewSpreadsheet)
         .addButton((b) =>
           b
-            .setButtonText("Sheetsを作成")
+            .setButtonText(t().syncSettingsCreateSpreadsheet)
             .setCta()
             .onClick(async () => {
               try {
                 await sync.setupSheet(scope);
                 this.display();
               } catch (e) {
-                new Notice(`Setup失敗: ${(e as Error).message}`);
+                new Notice(t().syncSettingsSetupFailed((e as Error).message));
               }
             })
         );
@@ -157,37 +158,37 @@ export class SyncSettingsTab extends PluginSettingTab {
 
   private async renderAutoSyncSection(parent: HTMLElement): Promise<void> {
     const section = parent.createDiv();
-    new Setting(section).setName("自動同期").setHeading();
+    new Setting(section).setName(t().syncSettingsAutomaticSynchronization).setHeading();
 
     const watcher = new AutoSyncWatcher(this.plugin, this.app);
     const enabled = await watcher.isEnabled();
 
     new Setting(section)
-      .setName("ファイル変更時に自動同期")
+      .setName(t().syncSettingsSyncAutomaticallyWhenTaskFiles)
       .setDesc(
-        "タスクのフォルダの .md を更新すると 2秒のデバウンス後に自動同期します。変更を反映するにはプラグインを再読み込みしてください。"
+        t().syncSettingsEditingAMdInThe
       )
       .addToggle((tog) => {
         tog.setValue(enabled);
         tog.onChange(async (v) => {
           await watcher.setEnabled(v);
-          new Notice(`自動同期 ${v ? "ON" : "OFF"}（次回プラグイン再読み込みで有効化）`);
+          new Notice(t().syncSettingsAutoSyncTakesEffectAfter(v ? "ON" : "OFF"));
         });
       });
   }
 
   private async renderManualSyncSection(parent: HTMLElement): Promise<void> {
     const section = parent.createDiv();
-    new Setting(section).setName("手動同期 (まとめて)").setHeading();
+    new Setting(section).setName(t().syncSettingsManualSynchronization).setHeading();
 
     const sync = new SheetsSync(this.app, this.plugin, new GoogleOAuth(this.plugin));
 
     new Setting(section)
-      .setName("両スコープを同期")
-      .setDesc("個人と組織の両方を実行します。両方setup済みでないと一部スキップ。")
+      .setName(t().syncSettingsSyncBothScopes)
+      .setDesc(t().syncSettingsSyncPersonalAndOrganizationTasks)
       .addButton((b) =>
         b
-          .setButtonText("全部同期")
+          .setButtonText(t().syncSettingsSyncAll)
           .setCta()
           .onClick(async () => {
             try {
@@ -195,16 +196,16 @@ export class SyncSettingsTab extends PluginSettingTab {
               const parts: string[] = [];
               if (results.personal) {
                 parts.push(
-                  `個人 push:${results.personal.pushed} pull:${results.personal.pulled}`
+                  t().syncSettingsPersonalPushPull(results.personal.pushed, results.personal.pulled)
                 );
               }
               if (results.org) {
-                parts.push(`組織 push:${results.org.pushed} pull:${results.org.pulled}`);
+                parts.push(t().syncSettingsOrganizationPushPull(results.org.pushed, results.org.pulled));
               }
-              new Notice(`同期完了: ${parts.join(" / ") || "対象なし"}`);
+              new Notice(t().syncSettingsSyncComplete(parts.join(" / ") || t().nothingToSync));
               this.display();
             } catch (e) {
-              new Notice(`同期失敗: ${(e as Error).message}`);
+              new Notice(t().syncSettingsSyncFailed((e as Error).message));
             }
           })
       );
@@ -212,12 +213,12 @@ export class SyncSettingsTab extends PluginSettingTab {
 
   private async renderMailSection(parent: HTMLElement): Promise<void> {
     const section = parent.createDiv();
-    new Setting(section).setName("メール (Gmail)").setHeading();
+    new Setting(section).setName(t().syncSettingsMailGmail).setHeading();
     const cfg = await loadMailConfig(this.plugin);
 
     new Setting(section)
-      .setName("受信クエリ")
-      .setDesc("一覧の既定の絞り込み。例: in:inbox / is:unread")
+      .setName(t().syncSettingsInboxQuery)
+      .setDesc(t().syncSettingsDefaultEmailFilterExamplesIn)
       .addText((t) => {
         t.setValue(cfg.query);
         t.onChange(async (v) => {
@@ -227,7 +228,7 @@ export class SyncSettingsTab extends PluginSettingTab {
       });
 
     new Setting(section)
-      .setName("表示件数")
+      .setName(t().syncSettingsMessageLimit)
       .addText((t) =>
         t.setValue(String(cfg.maxItems)).onChange(async (v) => {
           const n = parseInt(v, 10);
@@ -239,8 +240,8 @@ export class SyncSettingsTab extends PluginSettingTab {
       );
 
     new Setting(section)
-      .setName("AIバックエンド")
-      .setDesc("claude-code = `claude -p`（サブスク・APIキー不要）/ api = Anthropic API")
+      .setName(t().syncSettingsAiBackend)
+      .setDesc(t().syncSettingsClaudeCodeClaudePSubscription)
       .addDropdown((d) =>
         d
           .addOption("claude-code", "claude -p")
@@ -253,8 +254,8 @@ export class SyncSettingsTab extends PluginSettingTab {
       );
 
     new Setting(section)
-      .setName("AI返信の参照フォルダ (カンマ区切り)")
-      .setDesc("返信ドラフト生成時に過去背景として参照する vault フォルダ。空 = vault 全体。例: Meetings, Notes")
+      .setName(t().syncSettingsAiReplyReferenceFoldersComma)
+      .setDesc(t().syncSettingsVaultFoldersUsedAsBackground)
       .addText((t) => {
         t.setValue(cfg.ragFolders.join(", "));
         t.inputEl.addClass("deck-input-full");

@@ -9,19 +9,7 @@ import { t } from "../core/i18n";
 import type { DeckSettings } from "../core/settings";
 import { requireClaudeCommand } from "../ai/claudeCommandGuard";
 
-const DEFAULT_PROMPT_TEMPLATE = `次のタスクのうち、AIが実行可能な部分をすべて実施してください。
-
-# 指針
-- タスクファイルを読み、何をすべきか把握する
-- AIが完遂できる部分は実際に作業する (コード雛形・調査メモ作成・ドキュメント整理など)
-- 人間判断・外部連絡・実物確認が必要な部分はTODOとして残す
-- 作業内容・残TODO・参考情報をタスクファイルの末尾に "## AI移譲ログ (今日)" セクションを作って追記する
-- 作業中の調査メモは vault 内の適切な場所に保存
-
-# タスクファイル
-{{TASK_PATH}}
-
-まず {{TASK_PATH}} を Read してタスク内容を把握し、計画を立ててから着手してください。`;
+const DEFAULT_PROMPT_TEMPLATE = t().aiDelegationDoEveryPartOfThe;
 
 export interface AIDelegationOptions {
   app: App;
@@ -71,27 +59,27 @@ export class AIDelegationModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("nd-ai-delegate-modal");
-    contentEl.createEl("h2", { text: `✨ AI移譲: ${this.opts.taskFile.basename}` });
+    contentEl.createEl("h2", { text: t().aiDelegationAiDelegation(this.opts.taskFile.basename) });
 
     const warn = contentEl.createDiv({ cls: "nd-ai-delegate-warn" });
     warn.setText(
-      "⚠️  AIにファイル編集・シェルコマンド実行を許可します。" +
-        " 実行中にモーダルを閉じてもセッションは継続し、" +
-        ` ログは ${this.opts.settings.aiLogFolder || "(未設定)"}/<timestamp>_<task>.md にリアルタイム書き出しされます。` +
-        " ステータスバー右下の AI🤖 から復帰できます。"
+      t().aiDelegationThisLetsTheAiEdit +
+        t().aiDelegationClosingThisWindowKeepsThe +
+        t().aiDelegationAndTheLogIsWritten(this.opts.settings.aiLogFolder || t().notSetPlaceholder) +
+        t().aiDelegationReopenItFromAiAt
     );
 
     new Setting(contentEl)
       .setName("Permission Mode")
-      .setDesc("acceptEdits = 編集は自動承認 / bypassPermissions = 全自動 (危険)")
+      .setDesc(t().aiDelegationAccepteditsEditsAreApprovedAutomatically)
       .addDropdown((d) => {
-        d.addOption("acceptEdits", "acceptEdits (推奨)");
-        d.addOption("bypassPermissions", "bypassPermissions (全自動)");
+        d.addOption("acceptEdits", t().aiDelegationAccepteditsRecommended);
+        d.addOption("bypassPermissions", t().aiDelegationBypasspermissionsFullyAutomatic);
         d.setValue("acceptEdits");
         this.modeSelect = d.selectEl;
       });
 
-    const promptLabel = contentEl.createEl("label", { text: "AIへの指示" });
+    const promptLabel = contentEl.createEl("label", { text: t().aiDelegationInstructionsForAi });
     promptLabel.addClass("nd-ai-delegate-label");
     this.promptArea = contentEl.createEl("textarea", {
       cls: "nd-ai-delegate-prompt",
@@ -104,19 +92,19 @@ export class AIDelegationModal extends Modal {
 
     const btnRow = contentEl.createDiv({ cls: "nd-ai-delegate-buttons" });
 
-    this.openLogBtn = btnRow.createEl("button", { text: "📄 ログを開く" });
+    this.openLogBtn = btnRow.createEl("button", { text: t().aiDelegationOpenLog });
     this.openLogBtn.disabled = true;
     this.openLogBtn.addEventListener("click", () => void this.openLogFile());
 
-    this.abortBtn = btnRow.createEl("button", { text: "🛑 中止" });
+    this.abortBtn = btnRow.createEl("button", { text: t().aiDelegationStopped });
     this.abortBtn.disabled = true;
     this.abortBtn.addEventListener("click", () => this.abortSession());
 
-    this.closeBtn = btnRow.createEl("button", { text: "閉じる" });
+    this.closeBtn = btnRow.createEl("button", { text: t().aiDelegationClose });
     this.closeBtn.addEventListener("click", () => this.close());
 
     this.runBtn = btnRow.createEl("button", {
-      text: "🚀 AIに渡す",
+      text: t().aiDelegationDelegateToAi,
       cls: "mod-cta",
     });
     this.runBtn.addEventListener("click", () => void this.run());
@@ -137,7 +125,7 @@ export class AIDelegationModal extends Modal {
     }
 
     this.statusEl = contentEl.createDiv({ cls: "nd-ai-delegate-status nd-muted" });
-    this.statusEl.setText("待機中");
+    this.statusEl.setText(t().aiDelegationWaiting);
     this.logEl = contentEl.createDiv({ cls: "nd-ai-delegate-log" });
 
     // If a session already exists for this task, attach to it.
@@ -156,7 +144,7 @@ export class AIDelegationModal extends Modal {
     // Intentionally do NOT cancel the session — it keeps streaming to the log
     // file and stays in the registry, accessible from the status bar.
     if (this.entry && this.entry.status === "running") {
-      new Notice(`AI移譲は継続中。ログ: ${this.entry.writer.path}`, 6000);
+      new Notice(t().aiDelegationAiDelegationContinuesLog(this.entry.writer.path), 6000);
     }
     this.contentEl.empty();
   }
@@ -165,7 +153,7 @@ export class AIDelegationModal extends Modal {
     if (!this.entry) return;
     const f = this.app.vault.getAbstractFileByPath(this.entry.writer.path);
     if (!(f instanceof TFile)) {
-      new Notice(`ログファイルが見つかりません: ${this.entry.writer.path}`);
+      new Notice(t().aiDelegationLogFileNotFound(this.entry.writer.path));
       return;
     }
     const leaf = this.app.workspace.getLeaf("split");
@@ -175,7 +163,7 @@ export class AIDelegationModal extends Modal {
   private abortSession(): void {
     if (!this.entry) return;
     if (this.registry.abort(this.entry.taskPath)) {
-      new Notice("AIセッションを中止しました");
+      new Notice(t().aiDelegationAiSessionStopped);
     }
   }
 
@@ -192,7 +180,7 @@ export class AIDelegationModal extends Modal {
       );
       return true;
     } catch (e) {
-      new Notice(`status更新失敗: ${(e as Error).message}`);
+      new Notice(t().aiDelegationStatusUpdateFailed((e as Error).message));
       return false;
     }
   }
@@ -212,7 +200,7 @@ export class AIDelegationModal extends Modal {
     if (this.runBtn) {
       this.runBtn.disabled = true;
       this.runBtn.setText(
-        entry.status === "running" ? "実行中…" : entry.status === "completed" ? "✅ 完了" : "再実行不可"
+        entry.status === "running" ? t().aiDelegationRunning : entry.status === "completed" ? t().aiDelegationComplete : t().aiDelegationCannotRunAgain
       );
     }
     if (this.abortBtn) this.abortBtn.disabled = entry.status !== "running";
@@ -237,7 +225,7 @@ export class AIDelegationModal extends Modal {
         if (this.abortBtn) this.abortBtn.disabled = entry.status !== "running";
         if (this.runBtn) {
           this.runBtn.disabled = entry.status !== "completed" && entry.status !== "error";
-          this.runBtn.setText(entry.status === "completed" ? "✅ 再実行" : "🔁 再試行");
+          this.runBtn.setText(entry.status === "completed" ? t().aiDelegationRunAgain : t().aiDelegationRetry);
         }
         if (this.promptArea) this.promptArea.disabled = entry.status === "running";
         if (this.modeSelect) this.modeSelect.disabled = entry.status === "running";
@@ -246,13 +234,13 @@ export class AIDelegationModal extends Modal {
   }
 
   private describeStatus(entry: SessionEntry): string {
-    if (entry.status === "running") return "実行中… (閉じても継続)";
+    if (entry.status === "running") return t().aiDelegationRunningContinuesWhenClosed;
     if (entry.status === "completed") {
       const sec = entry.final ? (entry.final.durationMs / 1000).toFixed(1) : "?";
-      return `完了 ${sec}s`;
+      return t().aiDelegationCompletedS(sec);
     }
-    if (entry.status === "cancelled") return "中止";
-    if (entry.status === "error") return `エラー (code=${entry.final?.code ?? "?"})`;
+    if (entry.status === "cancelled") return t().aiDelegationStopped2;
+    if (entry.status === "error") return t().aiDelegationErrorCode(entry.final?.code ?? "?");
     return entry.status;
   }
 
@@ -270,7 +258,7 @@ export class AIDelegationModal extends Modal {
       body.setText(`  ↳ ${e.text}`);
       if (e.isError) line.addClass("nd-ai-log-error");
     } else if (e.kind === "result") {
-      body.setText(`✅ ${e.text ?? "完了"}`);
+      body.setText(t().aiDelegationText(e.text ?? t().doneLabel));
     } else if (e.kind === "stderr") body.setText(`stderr: ${e.text}`);
     else if (e.kind === "error") {
       body.setText(`❌ ${e.text}`);
@@ -282,12 +270,12 @@ export class AIDelegationModal extends Modal {
   private async run(): Promise<void> {
     if (!this.promptArea || !this.modeSelect || !this.runBtn) return;
     if (this.registry.has(this.opts.taskFile.path)) {
-      new Notice("既に実行中です");
+      new Notice(t().aiDelegationAlreadyRunning);
       return;
     }
     const prompt = this.promptArea.value.trim();
     if (!prompt) {
-      new Notice("指示が空です");
+      new Notice(t().aiDelegationInstructionsAreEmpty);
       return;
     }
     const mode = this.modeSelect.value as "acceptEdits" | "bypassPermissions";
@@ -300,10 +288,10 @@ export class AIDelegationModal extends Modal {
     }
 
     this.runBtn.disabled = true;
-    this.runBtn.setText("起動中…");
+    this.runBtn.setText(t().aiDelegationStarting);
     this.promptArea.disabled = true;
     this.modeSelect.disabled = true;
-    if (this.statusEl) this.statusEl.setText("claude起動中…");
+    if (this.statusEl) this.statusEl.setText(t().aiDelegationStartingClaude);
 
     let entry: SessionEntry;
     try {
@@ -320,23 +308,23 @@ export class AIDelegationModal extends Modal {
             const moved = await this.advanceStatus();
             const tail = moved ? ` → ${this.opts.successStatus ?? "レビュー待ち"}` : "";
             new Notice(
-              `AI移譲完了: ${e.taskBasename} (${(final.durationMs / 1000).toFixed(1)}s)${tail}`
+              t().aiDelegationAiDelegationCompletedS(e.taskBasename, (final.durationMs / 1000).toFixed(1), tail)
             );
           } else if (final.cancelled) {
-            new Notice(`AI移譲中止: ${e.taskBasename}`);
+            new Notice(t().aiDelegationAiDelegationStopped(e.taskBasename));
           } else {
-            new Notice(`AI移譲失敗 (code=${final.code}) — ログ参照`);
+            new Notice(t().aiDelegationAiDelegationFailedCodeSee(final.code));
           }
         },
       });
     } catch (e) {
       const msg = (e as Error).message;
-      new Notice(`起動失敗: ${msg}`);
+      new Notice(t().aiDelegationFailedToStart(msg));
       if (this.uiLive) {
-        if (this.statusEl) this.statusEl.setText(`起動失敗: ${msg}`);
+        if (this.statusEl) this.statusEl.setText(t().aiDelegationFailedToStart(msg));
         if (this.runBtn) {
           this.runBtn.disabled = false;
-          this.runBtn.setText("🔁 再試行");
+          this.runBtn.setText(t().aiDelegationRetry);
         }
         if (this.promptArea) this.promptArea.disabled = false;
         if (this.modeSelect) this.modeSelect.disabled = false;

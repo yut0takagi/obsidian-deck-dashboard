@@ -1,5 +1,6 @@
 import { App, Modal, Notice, Plugin } from "obsidian";
 import { GoogleOAuth } from "../auth/googleOAuth";
+import { t } from "../core/i18n";
 import {
   createDraft,
   getProfile,
@@ -35,24 +36,24 @@ export class MailComposeModal extends Modal {
     contentEl.empty();
     contentEl.addClass("nd-mail-compose");
     contentEl.createEl("h3", {
-      text: this.opts.mode === "reply" ? "返信" : this.opts.mode === "forward" ? "転送" : "新規作成",
+      text: this.opts.mode === "reply" ? t().mailComposeReply : this.opts.mode === "forward" ? t().mailComposeForward : t().mailComposeCompose,
     });
 
     if (this.opts.infoBanner) {
       const info = contentEl.createDiv({ cls: "nd-mail-compose-info" });
       info.createEl("div", {
         cls: "nd-mail-compose-info-label nd-muted",
-        text: "🤖 AI要約・参照（このメールには含まれません）",
+        text: t().mailComposeAiSummaryAndSourcesNot,
       });
       info.createEl("pre", { cls: "nd-mail-compose-info-body", text: this.opts.infoBanner });
     }
 
     const toInput = labeledInput(contentEl, "To", this.opts.to ?? "");
     const ccInput = labeledInput(contentEl, "Cc", this.opts.cc ?? "");
-    const subjectInput = labeledInput(contentEl, "件名", this.opts.subject ?? "");
+    const subjectInput = labeledInput(contentEl, t().mailComposeSubject, this.opts.subject ?? "");
     const bodyInput = contentEl.createEl("textarea", {
       cls: "nd-mail-compose-body",
-      attr: { rows: "14", placeholder: "本文…" },
+      attr: { rows: "14", placeholder: t().mailComposeMessage },
     });
     bodyInput.value = this.opts.bodyText ?? "";
 
@@ -73,21 +74,21 @@ export class MailComposeModal extends Modal {
     });
 
     const buttons = contentEl.createDiv({ cls: "modal-button-container" });
-    const cancel = buttons.createEl("button", { text: "キャンセル" });
+    const cancel = buttons.createEl("button", { text: t().mailComposeCancel });
     cancel.addEventListener("click", () => this.close());
-    const send = buttons.createEl("button", { text: "📤 Gmailで確認して送信", cls: "mod-cta" });
+    const send = buttons.createEl("button", { text: t().mailComposeReviewAndSendInGmail, cls: "mod-cta" });
     send.addEventListener("click", () => {
       void (async () => {
         if (!toInput.value.trim()) {
-          new Notice("宛先(To)が未入力です");
+          new Notice(t().mailComposeEnterARecipientTo);
           return;
         }
         if (!bodyInput.value.trim()) {
-          new Notice("本文が空です");
+          new Notice(t().mailComposeMessageBodyIsEmpty);
           return;
         }
         send.disabled = true;
-        send.setText("下書き作成中…");
+        send.setText(t().mailComposeCreatingDraft);
         try {
           const input: DraftInput = {
             to: toInput.value.trim(),
@@ -106,15 +107,15 @@ export class MailComposeModal extends Modal {
             : gmailDraftsListUrl(email);
           const win = window.open(url, "_blank");
           if (win) {
-            new Notice("Gmail の下書きを開きました。内容を確認して送信してください。");
+            new Notice(t().mailComposeOpenedTheGmailDraftReview);
           } else {
-            new Notice(`下書きを作成しました。Gmail のドラフトを開いてください: ${url}`);
+            new Notice(t().mailComposeDraftCreatedOpenItIn(url));
           }
           this.close();
         } catch (e) {
-          new Notice(`下書き作成失敗: ${(e as Error).message}`);
+          new Notice(t().mailComposeFailedToCreateDraft((e as Error).message));
           send.disabled = false;
-          send.setText("📤 Gmailで確認して送信");
+          send.setText(t().mailComposeReviewAndSendInGmail);
         }
       })();
     });

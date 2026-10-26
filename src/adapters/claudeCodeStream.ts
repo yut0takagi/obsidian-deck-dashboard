@@ -1,4 +1,5 @@
 import { Platform } from "obsidian";
+import { t } from "../core/i18n";
 
 // `Buffer` is a desktop-only Node global; this alias keeps stdout/stderr chunk
 // types accurate without referencing the global at each call site.
@@ -74,7 +75,7 @@ export function runClaudeStream(opts: {
   timeoutMs?: number;
 }): ClaudeStreamSession {
   if (!Platform.isDesktop) {
-    throw new Error("claude streaming はデスクトップ版のみ対応です。");
+    throw new Error(t().claudeCodeStreamClaudeStreamingWorksOnlyOn);
   }
   const {
     prompt,
@@ -112,7 +113,7 @@ export function runClaudeStream(opts: {
   let stdoutBuf = "";
 
   const timer: number = window.setTimeout(() => {
-    onEvent({ kind: "error", text: `タイムアウト (${Math.round(timeoutMs / 60000)}分)` });
+    onEvent({ kind: "error", text: t().claudeCodeStreamTimedOutMin(Math.round(timeoutMs / 60000)) });
     try {
       child.kill("SIGTERM");
     } catch {
@@ -138,7 +139,7 @@ export function runClaudeStream(opts: {
       });
       child.on("error", (e: Error) => {
         window.clearTimeout(timer);
-        onEvent({ kind: "error", text: `spawn失敗: ${e.message}` });
+        onEvent({ kind: "error", text: t().claudeCodeStreamFailedToStartProcess(e.message) });
         resolve({ ok: false, finalText, code: null });
       });
       child.on("close", (code: number | null) => {
@@ -160,7 +161,7 @@ export function runClaudeStream(opts: {
         child.stdin.end();
       } catch (e) {
         window.clearTimeout(timer);
-        onEvent({ kind: "error", text: `stdin書込失敗: ${e instanceof Error ? e.message : String(e)}` });
+        onEvent({ kind: "error", text: t().claudeCodeStreamCouldNotWriteToStdin(e instanceof Error ? e.message : String(e)) });
         resolve({ ok: false, finalText, code: null });
       }
     }

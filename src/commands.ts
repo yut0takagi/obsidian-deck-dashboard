@@ -41,7 +41,7 @@ export function registerCommands(plugin: CommandHost): void {
 
   plugin.addCommand({
     id: "open-mail",
-    name: "メールを開く (Gmail)",
+    name: t().commandsOpenMailGmail,
     callback: async () => {
       const { workspace } = plugin.app;
       let leaf = workspace.getLeavesOfType(VIEW_TYPE_MAIL)[0];
@@ -96,7 +96,7 @@ export function registerCommands(plugin: CommandHost): void {
     name: "Google Calendar: Sign out",
     callback: async () => {
       await new GoogleOAuth(plugin).clearTokens();
-      new Notice("Google Calendar からサインアウトしました");
+      new Notice(t().commandsSignedOutOfGoogleCalendar);
     },
   });
 
@@ -110,41 +110,41 @@ export function registerCommands(plugin: CommandHost): void {
         const lines = cals.map(
           (c) => `${c.primary ? "★" : "  "} ${c.summary}\n   → ${c.id}`
         );
-        new Notice(`カレンダー一覧 (${cals.length}件):\n${lines.join("\n")}`, 15000);
+        new Notice(t().commandsCalendars(cals.length, lines.join("\n")), 15000);
       } catch (e) {
-        new Notice(`取得失敗: ${(e as Error).message}`);
+        new Notice(t().commandsFailedToRetrieve((e as Error).message));
       }
     },
   });
 
   plugin.addCommand({
     id: "sheets-sync-setup-personal",
-    name: "Sheets Sync: Setup personal sheet (個人)",
+    name: t().commandsSheetsSyncSetupPersonalSheet,
     callback: async () => {
       try {
         const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
         const cfg = await sync.setupSheet("personal");
         if (cfg.spreadsheetUrl) {
-          new Notice(`個人シート作成: ${cfg.spreadsheetUrl}`, 10000);
+          new Notice(t().commandsPersonalSheetCreated(cfg.spreadsheetUrl), 10000);
         }
       } catch (e) {
-        new Notice(`Setup失敗: ${(e as Error).message}`);
+        new Notice(t().commandsSetupFailed((e as Error).message));
       }
     },
   });
 
   plugin.addCommand({
     id: "sheets-sync-setup-org",
-    name: "Sheets Sync: Setup org sheet (組織)",
+    name: t().commandsSheetsSyncSetupOrganizationSheet,
     callback: async () => {
       try {
         const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
         const cfg = await sync.setupSheet("org");
         if (cfg.spreadsheetUrl) {
-          new Notice(`組織シート作成: ${cfg.spreadsheetUrl}`, 10000);
+          new Notice(t().commandsOrganizationSheetCreated(cfg.spreadsheetUrl), 10000);
         }
       } catch (e) {
-        new Notice(`Setup失敗: ${(e as Error).message}`);
+        new Notice(t().commandsSetupFailed((e as Error).message));
       }
     },
   });
@@ -155,48 +155,48 @@ export function registerCommands(plugin: CommandHost): void {
     callback: async () => {
       try {
         const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
-        new Notice("Sheets同期を開始…");
+        new Notice(t().commandsStartingSheetsSync);
         const results = await sync.syncAll();
         const parts: string[] = [];
         if (results.personal) {
           parts.push(
-            `個人 push:${results.personal.pushed} pull:${results.personal.pulled}`
+            t().commandsPersonalPushPull(results.personal.pushed, results.personal.pulled)
           );
         }
         if (results.org) {
-          parts.push(`組織 push:${results.org.pushed} pull:${results.org.pulled}`);
+          parts.push(t().commandsOrganizationPushPull(results.org.pushed, results.org.pulled));
         }
-        new Notice(`同期完了: ${parts.join(" / ") || "対象なし"}`);
+        new Notice(t().commandsSyncComplete(parts.join(" / ") || t().nothingToSync));
       } catch (e) {
-        new Notice(`同期失敗: ${(e as Error).message}`);
+        new Notice(t().commandsSyncFailed((e as Error).message));
       }
     },
   });
 
   plugin.addCommand({
     id: "sheets-sync-now-personal",
-    name: "Sheets Sync: Sync now (個人 only)",
+    name: t().commandsSheetsSyncSyncNowPersonal,
     callback: async () => {
       try {
         const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
         const report = await sync.syncScope("personal");
-        new Notice(`個人同期完了: push ${report.pushed} / pull ${report.pulled}`);
+        new Notice(t().commandsPersonalSyncCompletePushPull(report.pushed, report.pulled));
       } catch (e) {
-        new Notice(`同期失敗: ${(e as Error).message}`);
+        new Notice(t().commandsSyncFailed((e as Error).message));
       }
     },
   });
 
   plugin.addCommand({
     id: "sheets-sync-now-org",
-    name: "Sheets Sync: Sync now (組織 only)",
+    name: t().commandsSheetsSyncSyncNowOrganization,
     callback: async () => {
       try {
         const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
         const report = await sync.syncScope("org");
-        new Notice(`組織同期完了: push ${report.pushed} / pull ${report.pulled}`);
+        new Notice(t().commandsOrganizationSyncCompletePushPull(report.pushed, report.pulled));
       } catch (e) {
-        new Notice(`同期失敗: ${(e as Error).message}`);
+        new Notice(t().commandsSyncFailed((e as Error).message));
       }
     },
   });
@@ -209,26 +209,26 @@ export function registerCommands(plugin: CommandHost): void {
         const sync = new SheetsSync(plugin.app, plugin, new GoogleOAuth(plugin));
         const cfg = await sync.getConfig();
         const lines: string[] = [];
-        lines.push(`自分: ${cfg.self_owner ?? "(未設定)"}`);
+        lines.push(t().commandsYourName(cfg.self_owner ?? t().notSetPlaceholder));
         if (cfg.personal?.spreadsheetId) {
           lines.push(
-            `個人: ${cfg.personal.spreadsheetUrl}\n  最終: ${cfg.personal.last_sync ?? "未同期"}`
+            t().commandsPersonalLastSync(cfg.personal.spreadsheetUrl, cfg.personal.last_sync ?? t().neverSynced)
           );
         } else {
-          lines.push("個人: 未設定");
+          lines.push(t().commandsPersonalNotConfigured);
         }
         if (cfg.org?.spreadsheetId) {
           lines.push(
-            `組織: ${cfg.org.spreadsheetUrl}\n  最終: ${cfg.org.last_sync ?? "未同期"}`
+            t().commandsOrganizationLastSync(cfg.org.spreadsheetUrl, cfg.org.last_sync ?? t().neverSynced)
           );
         } else {
-          lines.push("組織: 未設定");
+          lines.push(t().commandsOrganizationNotConfigured);
         }
         const watcher = new AutoSyncWatcher(plugin, plugin.app);
-        lines.push(`自動同期: ${(await watcher.isEnabled()) ? "ON" : "OFF"}`);
+        lines.push(t().commandsAutoSync((await watcher.isEnabled()) ? "ON" : "OFF"));
         new Notice(lines.join("\n"));
       } catch (e) {
-        new Notice(`取得失敗: ${(e as Error).message}`);
+        new Notice(t().commandsFailedToRetrieve((e as Error).message));
       }
     },
   });
@@ -241,7 +241,7 @@ export function registerCommands(plugin: CommandHost): void {
       const current = await watcher.isEnabled();
       await watcher.setEnabled(!current);
       new Notice(
-        `自動同期: ${!current ? "ON" : "OFF"}（次回プラグイン再読み込み時に有効化）`
+        t().commandsAutoSyncTakesEffectAfter(!current ? "ON" : "OFF")
       );
     },
   });
@@ -336,10 +336,10 @@ async function resetHomeDashboard(plugin: CommandHost): Promise<void> {
 
   const confirmed = await confirmModal(
     plugin,
-    "ホームダッシュボードをリセット",
+    t().commandsResetHomeDashboard,
     existing instanceof TFile
-      ? `現在の「${homePath}」を初期テンプレートで上書きします。元のレイアウトとウィジェット設定は失われます。よろしいですか？`
-      : `「${homePath}」を初期テンプレートで作成します。`
+      ? t().commandsTheDashboardWillBeOverwritten(homePath)
+      : t().commandsWillBeCreatedFromThe(homePath)
   );
   if (!confirmed) return;
 
@@ -398,12 +398,12 @@ class ConfirmModal extends Modal {
     contentEl.createEl("p", { text: this.message });
 
     const buttons = contentEl.createDiv({ cls: "modal-button-container" });
-    const cancel = buttons.createEl("button", { text: "キャンセル" });
+    const cancel = buttons.createEl("button", { text: t().commandsCancel });
     cancel.addEventListener("click", () => {
       this.result = false;
       this.close();
     });
-    const ok = buttons.createEl("button", { text: "リセット", cls: "mod-warning" });
+    const ok = buttons.createEl("button", { text: t().commandsReset, cls: "mod-warning" });
     ok.addEventListener("click", () => {
       this.result = true;
       this.close();

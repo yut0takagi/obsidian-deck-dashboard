@@ -23,6 +23,7 @@ import {
 } from "./core/settings";
 import { updatePluginData } from "./core/pluginData";
 import { migrateAllSecrets } from "./core/secrets";
+import { t } from "./core/i18n";
 
 /** Minimal shape of Obsidian's (untyped) internal command registry. */
 interface CommandRegistry {
@@ -111,7 +112,7 @@ export default class DeckPlugin extends Plugin implements DeckHost {
     this.addRibbonIcon("layout-dashboard", "Open home dashboard", () => {
       (this.app as AppWithCommands).commands.executeCommandById("deck-dashboard:open-home");
     });
-    this.addRibbonIcon("mail", "メールを開く", () => {
+    this.addRibbonIcon("mail", t().mainOpenMail, () => {
       (this.app as AppWithCommands).commands.executeCommandById("deck-dashboard:open-mail");
     });
 
@@ -150,7 +151,7 @@ export default class DeckPlugin extends Plugin implements DeckHost {
   private installAIStatusBar(): void {
     const item = this.addStatusBarItem();
     item.addClass("nd-ai-statusbar");
-    item.setAttribute("aria-label", "AI移譲セッション");
+    item.setAttribute("aria-label", t().mainAiDelegationSessions);
     item.addEventListener("click", () => {
       const vaultRoot = (this.app.vault.adapter as BasePathAdapter).getBasePath?.();
       new AISessionListModal({
@@ -177,7 +178,7 @@ export default class DeckPlugin extends Plugin implements DeckHost {
     if (total === 0) {
       this.aiStatusBar.addClass("nd-ai-statusbar-empty");
       this.aiStatusBar.setText("🤖");
-      this.aiStatusBar.setAttribute("aria-label", "AI移譲: アクティブなセッションなし");
+      this.aiStatusBar.setAttribute("aria-label", t().mainAiDelegationNoActiveSessions);
       return;
     }
     this.aiStatusBar.removeClass("nd-ai-statusbar-empty");
@@ -187,12 +188,12 @@ export default class DeckPlugin extends Plugin implements DeckHost {
     const icon = running.length > 0 ? "⚡" : "🤖";
     const label =
       running.length > 0
-        ? `${icon} AI ${running.length}実行中`
-        : `${icon} AI ${total}件`;
+        ? t().mainAiRunning(icon, running.length)
+        : t().mainAiItems(icon, total);
     this.aiStatusBar.setText(label);
     this.aiStatusBar.setAttribute(
       "aria-label",
-      `AI移譲: 実行中 ${running.length}件 / 合計 ${total}件`
+      t().mainAiDelegationRunningTotalItems(running.length, total)
     );
   }
 }

@@ -1,5 +1,6 @@
 import { requestUrl } from "obsidian";
 import type { GoogleOAuth } from "../auth/googleOAuth";
+import { t } from "../core/i18n";
 
 const API = "https://www.googleapis.com/gmail/v1/users/me";
 
@@ -331,7 +332,7 @@ export function summarizeThread(thread: GmailThreadResource): GmailThreadSummary
   const dateStr = getHeader(lastHeaders, "Date");
   return {
     id: thread.id ?? "",
-    subject: stripRe(decodeRfc2047(getHeader(firstHeaders, "Subject"))) || "(件名なし)",
+    subject: stripRe(decodeRfc2047(getHeader(firstHeaders, "Subject"))) || t().gmailNoSubject,
     from: decodeRfc2047(getHeader(lastHeaders, "From")),
     date: dateStr ? new Date(dateStr) : new Date(0),
     snippet: thread.snippet ?? last?.snippet ?? "",

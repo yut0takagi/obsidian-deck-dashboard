@@ -1,6 +1,7 @@
 import { App, Modal, Setting } from "obsidian";
 import { widgetRegistry } from "../widgets";
 import type { WidgetInstance } from "../core/types";
+import { t } from "../core/i18n";
 
 export class AddWidgetModal extends Modal {
   private onSubmit: (w: WidgetInstance) => void;
@@ -13,14 +14,14 @@ export class AddWidgetModal extends Modal {
   onOpen(): void {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: "ウィジェットを追加" });
+    contentEl.createEl("h2", { text: t().addWidgetAddWidget });
 
     const grid = contentEl.createDiv({ cls: "nd-widget-picker" });
     for (const def of widgetRegistry.all()) {
       const card = grid.createDiv({ cls: "nd-widget-card" });
       card.createEl("h3", { text: def.label });
       card.createEl("p", { text: def.description, cls: "nd-muted" });
-      const btn = card.createEl("button", { text: "追加", cls: "mod-cta" });
+      const btn = card.createEl("button", { text: t().addWidgetAdd, cls: "mod-cta" });
       btn.addEventListener("click", () => {
         this.onSubmit({
           type: def.type,
@@ -60,15 +61,15 @@ export class EditWidgetModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     const def = widgetRegistry.get(this.widget.type);
-    contentEl.createEl("h2", { text: `編集: ${def?.label ?? this.widget.type}` });
+    contentEl.createEl("h2", { text: t().addWidgetEdit(def?.label ?? this.widget.type) });
 
     contentEl.createEl("p", {
       cls: "nd-muted",
-      text: "✏ 入力するだけで自動保存されます (閉じるかEscでOK)",
+      text: t().addWidgetChangesSaveAutomaticallyAsYou,
     });
 
     new Setting(contentEl)
-      .setName("タイトル")
+      .setName(t().addWidgetTitle)
       .addText((t) =>
         t.setValue(this.widget.title ?? "").onChange((v) => {
           this.widget.title = v;
@@ -83,11 +84,11 @@ export class EditWidgetModal extends Modal {
         this.dirty = true;
       });
     } else {
-      settingsBox.createEl("p", { text: `不明なウィジェット種別: ${this.widget.type}` });
+      settingsBox.createEl("p", { text: t().addWidgetUnknownWidgetType(this.widget.type) });
     }
 
     const btnRow = contentEl.createDiv({ cls: "nd-btn-row" });
-    const deleteBtn = btnRow.createEl("button", { text: "🗑 削除", cls: "mod-warning" });
+    const deleteBtn = btnRow.createEl("button", { text: t().addWidgetDelete, cls: "mod-warning" });
     deleteBtn.addEventListener("click", () => {
       this.deleted = true;
       this.onDelete();
@@ -95,7 +96,7 @@ export class EditWidgetModal extends Modal {
     });
     const spacer = btnRow.createDiv();
     spacer.addClass("deck-spacer");
-    const closeBtn = btnRow.createEl("button", { text: "閉じる", cls: "mod-cta" });
+    const closeBtn = btnRow.createEl("button", { text: t().addWidgetClose, cls: "mod-cta" });
     closeBtn.addEventListener("click", () => {
       this.close();
     });

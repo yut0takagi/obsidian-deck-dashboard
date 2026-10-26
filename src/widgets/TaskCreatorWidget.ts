@@ -17,8 +17,8 @@ interface Settings {
 
 export const taskCreatorWidget: WidgetDefinition<Settings> = {
   type: "task-creator",
-  label: "Task Creator (新規タスク追加)",
-  description: "フォームから frontmatter付きタスクノートを作成する。Kanban/Ganttに即反映。",
+  label: t().taskCreatorTaskCreatorNewTask,
+  description: t().taskCreatorCreateATaskNoteWith,
   defaultSettings: () => ({
     folder: "",
     defaultPjt: "",
@@ -39,15 +39,15 @@ export const taskCreatorWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("保存先フォルダ")
+      .setName(t().taskCreatorDestinationFolder)
       .setDesc(t().inheritFolderHint)
       .addText((text) =>
         text.setValue(settings.folder).onChange((v) => onChange({ ...settings, folder: v.trim() }))
       );
-    new Setting(container).setName("デフォルト PJT").addText((t) =>
+    new Setting(container).setName(t().taskCreatorDefaultProject).addText((t) =>
       t.setValue(settings.defaultPjt).onChange((v) => onChange({ ...settings, defaultPjt: v }))
     );
-    new Setting(container).setName("デフォルト 優先度").addDropdown((d) =>
+    new Setting(container).setName(t().taskCreatorDefaultPriority).addDropdown((d) =>
       d
         .addOption("Urgent", "Urgent")
         .addOption("High", "High")
@@ -56,7 +56,7 @@ export const taskCreatorWidget: WidgetDefinition<Settings> = {
         .setValue(settings.defaultPriority)
         .onChange((v) => onChange({ ...settings, defaultPriority: v }))
     );
-    new Setting(container).setName("デフォルト status").addDropdown((d) =>
+    new Setting(container).setName(t().taskCreatorDefaultStatus).addDropdown((d) =>
       d
         .addOption("未着手", "未着手")
         .addOption("作業中", "作業中")
@@ -65,10 +65,10 @@ export const taskCreatorWidget: WidgetDefinition<Settings> = {
         .setValue(settings.defaultStatus)
         .onChange((v) => onChange({ ...settings, defaultStatus: v }))
     );
-    new Setting(container).setName("デフォルト ラベル").addText((t) =>
+    new Setting(container).setName(t().taskCreatorDefaultLabel).addText((t) =>
       t.setValue(settings.defaultLabel).onChange((v) => onChange({ ...settings, defaultLabel: v }))
     );
-    new Setting(container).setName("デフォルト 工数").addText((t) =>
+    new Setting(container).setName(t().taskCreatorDefaultEffort).addText((t) =>
       t
         .setValue(settings.defaultDuration)
         .onChange((v) => onChange({ ...settings, defaultDuration: v }))
@@ -107,7 +107,7 @@ function renderForm(el: HTMLElement, settings: Settings, ctx: WidgetContext): vo
   const titleRow = form.createDiv({ cls: "nd-task-row" });
   const titleInput = titleRow.createEl("input", {
     cls: "nd-task-title-input",
-    attr: { type: "text", placeholder: "タスク名 (例: 作成 提案スライド)" },
+    attr: { type: "text", placeholder: t().taskCreatorTaskNameEGPrepare },
   });
   titleInput.addEventListener("input", () => (state.title = titleInput.value));
   titleInput.addEventListener("keydown", (e) => {
@@ -117,10 +117,10 @@ function renderForm(el: HTMLElement, settings: Settings, ctx: WidgetContext): vo
   // Compact row with key fields
   const fieldsRow = form.createDiv({ cls: "nd-task-fields" });
 
-  mkLabeledInput(fieldsRow, "PJT", state.pjt, (v) => (state.pjt = v), "PJT名");
-  mkLabeledInput(fieldsRow, "期限", state.deadline, (v) => (state.deadline = v), "YYYY-MM-DD or なし");
+  mkLabeledInput(fieldsRow, "PJT", state.pjt, (v) => (state.pjt = v), t().taskCreatorProjectName);
+  mkLabeledInput(fieldsRow, t().taskCreatorDue, state.deadline, (v) => (state.deadline = v), t().taskCreatorYyyyMmDdOrNone);
 
-  const prioCell = mkLabeled(fieldsRow, "優先度");
+  const prioCell = mkLabeled(fieldsRow, t().taskCreatorPriority);
   const prioSel = prioCell.createEl("select", { cls: "nd-task-select" });
   for (const v of ["Urgent", "High", "Medium", "Low"]) {
     const opt = prioSel.createEl("option", { text: v });
@@ -138,14 +138,14 @@ function renderForm(el: HTMLElement, settings: Settings, ctx: WidgetContext): vo
   }
   statusSel.addEventListener("change", () => (state.status = statusSel.value));
 
-  mkLabeledInput(fieldsRow, "ラベル", state.label, (v) => (state.label = v), "作成/設計...");
-  mkLabeledInput(fieldsRow, "工数", state.duration, (v) => (state.duration = v), "30m/1h/1d/1w");
+  mkLabeledInput(fieldsRow, t().taskCreatorLabel, state.label, (v) => (state.label = v), t().taskCreatorWritingDesign);
+  mkLabeledInput(fieldsRow, t().taskCreatorEffort, state.duration, (v) => (state.duration = v), "30m/1h/1d/1w");
 
   // Submit
   const btnRow = form.createDiv({ cls: "nd-task-btn-row" });
-  const submitBtn = btnRow.createEl("button", { cls: "mod-cta", text: "＋ タスク追加" });
+  const submitBtn = btnRow.createEl("button", { cls: "mod-cta", text: t().taskCreatorAddTask });
   submitBtn.addEventListener("click", () => void submit());
-  const hint = btnRow.createSpan({ cls: "nd-muted nd-task-hint", text: "⌘+Enter でも追加" });
+  const hint = btnRow.createSpan({ cls: "nd-muted nd-task-hint", text: t().taskCreatorOrPressEnter });
   void hint;
 
   window.setTimeout(() => titleInput.focus(), 50);
@@ -153,7 +153,7 @@ function renderForm(el: HTMLElement, settings: Settings, ctx: WidgetContext): vo
   async function submit(): Promise<void> {
     const title = state.title.trim();
     if (!title) {
-      new Notice("タスク名を入力してください");
+      new Notice(t().taskCreatorEnterATaskName);
       titleInput.focus();
       return;
     }
@@ -191,7 +191,7 @@ function renderForm(el: HTMLElement, settings: Settings, ctx: WidgetContext): vo
       "",
     ].join("\n");
     const file = await ctx.app.vault.create(path, fm);
-    new Notice(`✅ 追加: ${title}`);
+    new Notice(t().taskCreatorAdded(title));
     // Reset title only — keep other defaults for batch entry
     titleInput.value = "";
     state.title = "";

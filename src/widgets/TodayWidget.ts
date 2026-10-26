@@ -18,8 +18,8 @@ function pad(n: number): string {
 
 export const todayWidget: WidgetDefinition<Settings> = {
   type: "today",
-  label: "Today (日付)",
-  description: "今日の日付・曜日を大きく表示 + 日報ノートへのクイックリンク。",
+  label: t().todayTodayDate,
+  description: t().todayTodaySDateAndWeekday,
   defaultSettings: () => ({
     dailyFolder: "",
     dailyFormat: "YYYY-MM-DD",
@@ -29,7 +29,7 @@ export const todayWidget: WidgetDefinition<Settings> = {
     el.empty();
     el.addClass("nd-widget-today");
     const now = new Date();
-    const wd = ["日", "月", "火", "水", "木", "金", "土"][now.getDay()];
+    const wd = t().weekdaysShort[now.getDay()];
 
     const wrap = el.createDiv({ cls: "nd-today-wrap" });
 
@@ -38,7 +38,7 @@ export const todayWidget: WidgetDefinition<Settings> = {
     }
 
     const dateLine = wrap.createDiv({ cls: "nd-today-date" });
-    dateLine.createSpan({ cls: "nd-today-month", text: `${now.getMonth() + 1}月` });
+    dateLine.createSpan({ cls: "nd-today-month", text: t().todayMonth(now.getMonth() + 1) });
     dateLine.createSpan({ cls: "nd-today-day", text: String(now.getDate()) });
     dateLine.createSpan({ cls: "nd-today-weekday", text: `(${wd})` });
 
@@ -71,7 +71,7 @@ export const todayWidget: WidgetDefinition<Settings> = {
     const existing = ctx.app.vault.getAbstractFileByPath(dailyPath);
     const dailyLink = linkRow.createEl("a", {
       cls: "nd-today-daily-link",
-      text: existing instanceof TFile ? "📝 今日の日報を開く" : "📝 今日の日報を作成",
+      text: existing instanceof TFile ? t().todayOpenTodaySNote : t().todayCreateTodaySNote,
     });
     dailyLink.addEventListener("click", (e) => {
       e.preventDefault();
@@ -99,13 +99,13 @@ export const todayWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("挨拶 (任意)")
-      .setDesc("例: おはよう / 今日もいい一日を")
+      .setName(t().todayGreetingOptional)
+      .setDesc(t().todayExampleGoodMorningHaveA)
       .addText((t) =>
         t.setValue(settings.greeting).onChange((v) => onChange({ ...settings, greeting: v }))
       );
     new Setting(container)
-      .setName("日報フォルダ")
+      .setName(t().todayDailyNotesFolder)
       .setDesc(t().inheritFolderHint)
       .addText((text) =>
         text.setValue(settings.dailyFolder).onChange((v) =>
@@ -113,8 +113,8 @@ export const todayWidget: WidgetDefinition<Settings> = {
         )
       );
     new Setting(container)
-      .setName("日報ファイルパス形式")
-      .setDesc("vaultの命名規則に合わせる（コアのデイリーノートの設定を使うときは、その日付形式が優先されます）")
+      .setName(t().todayDailyNotePathFormat)
+      .setDesc(t().todayMatchYourVaultSNaming)
       .addDropdown((d) =>
         d
           .addOption("YYYY-MM-DD", "<folder>/YYYY-MM-DD.md")

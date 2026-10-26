@@ -3,6 +3,7 @@ import type { WidgetDefinition } from "./types";
 import { getDataviewApi } from "../adapters/dataview";
 import { renderTokenNotice } from "./tokenNotice";
 import { expandFolderTokens } from "../core/pathTokens";
+import { t } from "../core/i18n";
 
 interface Settings {
   query: string;
@@ -13,18 +14,18 @@ interface Settings {
 export const counterWidget: WidgetDefinition<Settings> = {
   type: "counter",
   label: "Counter / KPI",
-  description: "Dataviewクエリの結果件数を大きな数字で表示する。",
+  description: t().counterDisplayTheNumberOfResults,
   defaultSettings: () => ({
     query: 'LIST FROM "{{taskFolder}}" WHERE status != "完了"',
-    label: "未完了タスク",
-    unit: "件",
+    label: t().counterOpenTasks,
+    unit: t().counterItems,
   }),
   async render(el, settings, ctx) {
     el.empty();
     el.addClass("nd-widget-counter");
     const dv = getDataviewApi(ctx.app);
     if (!dv) {
-      el.createEl("p", { cls: "nd-empty", text: "Dataview プラグインが必要です。" });
+      el.createEl("p", { cls: "nd-empty", text: t().counterTheDataviewPluginIsRequired });
       return;
     }
     const expanded = expandFolderTokens(settings.query, ctx.settings);
@@ -54,15 +55,15 @@ export const counterWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("ラベル")
+      .setName(t().counterLabel)
       .addText((t) => t.setValue(settings.label).onChange((v) => onChange({ ...settings, label: v })));
     new Setting(container)
-      .setName("単位")
-      .setDesc("件 / 個 / %")
+      .setName(t().counterUnit)
+      .setDesc(t().counterItemsPieces)
       .addText((t) => t.setValue(settings.unit).onChange((v) => onChange({ ...settings, unit: v })));
     new Setting(container)
-      .setName("Dataview LIST クエリ")
-      .setDesc("結果の件数をカウントする。例: LIST FROM \"{{taskFolder}}\" WHERE status != \"完了\"。{{taskFolder}} / {{meetingFolder}} / {{dailyFolder}} は 設定 → Deck のフォルダに置き換わります")
+      .setName(t().counterDataviewListQuery)
+      .setDesc(t().counterCountsTheResultsExampleList)
       .addTextArea((t) => {
         t.setValue(settings.query);
         t.inputEl.rows = 4;

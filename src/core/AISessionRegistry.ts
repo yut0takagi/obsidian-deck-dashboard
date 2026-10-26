@@ -5,6 +5,7 @@ import {
   StreamEvent,
 } from "../adapters/claudeCodeStream";
 import { AILogWriter } from "../adapters/aiLogWriter";
+import { t } from "./i18n";
 
 export type SessionStatus = "running" | "completed" | "error" | "cancelled";
 
@@ -137,7 +138,7 @@ export class AISessionRegistry {
     const id = opts.taskFile.path;
     const existing = this.entries.get(id);
     if (existing && existing.status === "running") {
-      throw new Error(`AIセッションは既に実行中: ${id}`);
+      throw new Error(t().aiSessionRegistryAiSessionIsAlreadyRunning(id));
     }
     if (existing) {
       // Clear out stale finalized entry before starting a fresh run.

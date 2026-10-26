@@ -3,6 +3,7 @@ import { GoogleOAuth } from "../auth/googleOAuth";
 import { SheetsSync } from "./sheetsSync";
 import { settingsOf } from "../core/settings";
 import { readPluginData, updatePluginData } from "../core/pluginData";
+import { t } from "../core/i18n";
 
 const DEBOUNCE_MS = 2000;
 const SETTLE_AFTER_SYNC_MS = 2000;
@@ -78,24 +79,24 @@ export class AutoSyncWatcher {
       const parts: string[] = [];
       if (results.personal && (results.personal.pushed || results.personal.pulled)) {
         parts.push(
-          `個人 push:${results.personal.pushed} pull:${results.personal.pulled}`
+          t().autoSyncWatcherPersonalPushPull(results.personal.pushed, results.personal.pulled)
         );
       }
       if (results.org && (results.org.pushed || results.org.pulled)) {
-        parts.push(`組織 push:${results.org.pushed} pull:${results.org.pulled}`);
+        parts.push(t().autoSyncWatcherOrganizationPushPull(results.org.pushed, results.org.pulled));
       }
       if (parts.length > 0) {
-        new Notice(`📊 自動同期: ${parts.join(" / ")} (${paths.length}件)`);
+        new Notice(t().autoSyncWatcherAutoSyncFiles(parts.join(" / "), paths.length));
       }
     } catch (e) {
       const msg = (e as Error).message;
       if (msg.includes("429")) {
-        new Notice("自動同期: Sheets APIレート制限。30秒後に再試行します。");
+        new Notice(t().autoSyncWatcherAutoSyncSheetsApiRate);
         // Re-queue all known paths and retry after cooldown
         for (const p of paths) this.pendingPaths.add(p);
         window.setTimeout(() => void this.flush(), 30_000);
       } else {
-        new Notice(`自動同期エラー: ${msg}`);
+        new Notice(t().autoSyncWatcherAutoSyncError(msg));
       }
     }
 

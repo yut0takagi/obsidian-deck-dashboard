@@ -37,17 +37,17 @@ function fmString(v: unknown): string {
 const DAY_MS = 86400000;
 
 const CHART_LABELS: Record<ChartType, string> = {
-  "tasks-completed-30d": "📈 完了タスク (過去30日)",
-  "notes-created-30d": "📝 ノート作成数 (過去30日)",
-  "tasks-by-pjt": "📊 PJT別タスク数",
-  "tasks-by-status": "🥧 status別タスク数",
+  "tasks-completed-30d": t().chartsCompletedTasksLast30Days,
+  "notes-created-30d": t().chartsNotesCreatedLast30Days,
+  "tasks-by-pjt": t().chartsTasksByProject,
+  "tasks-by-status": t().chartsTasksByStatus,
 };
 
 export const chartsWidget: WidgetDefinition<Settings> = {
   type: "charts",
-  label: "Charts (進捗グラフ)",
+  label: t().chartsChartsProgress,
   description:
-    "完了タスク・ノート作成数・PJT別の集計をSVGミニグラフで表示。Chart libraryなしの軽量実装。",
+    t().chartsSmallChartsShowingCompletedTasks,
   defaultSettings: () => ({
     charts: ["tasks-completed-30d", "tasks-by-pjt", "tasks-by-status"],
     folder: "",
@@ -76,7 +76,7 @@ export const chartsWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("表示するチャート (カンマ区切り)")
+      .setName(t().chartsChartsToDisplayCommaSeparated)
       .setDesc("tasks-completed-30d / notes-created-30d / tasks-by-pjt / tasks-by-status")
       .addText((t) => {
         t.setValue(settings.charts.join(","));
@@ -89,17 +89,17 @@ export const chartsWidget: WidgetDefinition<Settings> = {
         );
       });
     new Setting(container)
-      .setName("タスクフォルダ")
+      .setName(t().chartsTaskFolder)
       .setDesc(t().inheritFolderHint)
       .addText((text) =>
         text.setValue(settings.folder).onChange((v) => onChange({ ...settings, folder: v.trim() }))
       );
-    new Setting(container).setName("status フィールド").addText((t) =>
+    new Setting(container).setName(t().chartsStatusField).addText((t) =>
       t.setValue(settings.statusField).onChange((v) =>
         onChange({ ...settings, statusField: v.trim() || "status" })
       )
     );
-    new Setting(container).setName("PJT フィールド").addText((t) =>
+    new Setting(container).setName(t().chartsProjectField).addText((t) =>
       t.setValue(settings.pjtField).onChange((v) =>
         onChange({ ...settings, pjtField: v.trim() || "PJT" })
       )
@@ -177,7 +177,7 @@ async function renderTasksByPjt(
     if (!f.path.startsWith(folder)) continue;
     const fm = readFrontmatter(ctx, f);
     if (fm[settings.statusField] === "完了") continue;
-    const pjt = fmString(fm[settings.pjtField] ?? "(なし)");
+    const pjt = fmString(fm[settings.pjtField] ?? t().chartsNone);
     counts.set(pjt, (counts.get(pjt) ?? 0) + 1);
   }
   const entries = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]).slice(0, 8);
@@ -195,7 +195,7 @@ async function renderTasksByStatus(
   for (const f of files) {
     if (!f.path.startsWith(folder)) continue;
     const fm = readFrontmatter(ctx, f);
-    const s = fmString(fm[settings.statusField] ?? "(なし)");
+    const s = fmString(fm[settings.statusField] ?? t().chartsNone);
     counts.set(s, (counts.get(s) ?? 0) + 1);
   }
   const order = ["未着手", "作業中", "レビュー待ち", "完了"];

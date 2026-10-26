@@ -1,5 +1,6 @@
 import { requestUrl } from "obsidian";
 import ICAL from "ical.js";
+import { t } from "../core/i18n";
 
 export interface CalEvent {
   uid: string;
@@ -15,18 +16,18 @@ export async function fetchIcal(url: string): Promise<string> {
   try {
     res = await requestUrl({ url, method: "GET" });
   } catch (e) {
-    throw new Error(`ネットワークエラー: ${(e as Error).message}`);
+    throw new Error(t().icalNetworkError((e as Error).message));
   }
   if (res.status === 403) {
     throw new Error(
-      `HTTP 403 Forbidden — このURLは社内ネットワーク/VPN専用、もしくはトークンが失効している可能性。Googleカレンダーの「カレンダーの非公開URL（iCal形式）」推奨。`
+      t().icalHttp403ForbiddenThisUrl
     );
   }
   if (res.status === 404) {
-    throw new Error(`HTTP 404 — URLが見つかりません。URLの再取得を。`);
+    throw new Error(t().icalHttp404UrlNotFound);
   }
   if (res.status === 401) {
-    throw new Error(`HTTP 401 — 認証が必要。iCal URLはトークン埋め込み式の公開URLにしてください。`);
+    throw new Error(t().icalHttp401AuthenticationRequiredUse);
   }
   if (res.status >= 400) {
     throw new Error(`HTTP ${res.status}`);

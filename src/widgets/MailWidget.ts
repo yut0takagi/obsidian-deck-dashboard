@@ -5,6 +5,7 @@ import { GoogleOAuth, hasScope } from "../auth/googleOAuth";
 import { listThreads, senderDisplayName } from "../adapters/gmail";
 import { MailView } from "../core/MailView";
 import { VIEW_TYPE_MAIL } from "../core/constants";
+import { t } from "../core/i18n";
 
 const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify";
 
@@ -26,8 +27,8 @@ async function openMailViewAt(app: App, threadId: string): Promise<void> {
 
 export const mailWidget: WidgetDefinition<Settings> = {
   type: "mail",
-  label: "メール (Gmail)",
-  description: "Gmail の受信一覧をコンパクト表示。クリックでメールペインを開く。OAuth(gmail)認証が必要。",
+  label: t().mailMailGmail,
+  description: t().mailCompactGmailMessageListClick,
   defaultSettings: () => ({ query: "in:inbox", maxItems: 8 }),
   async render(el, settings, ctx) {
     el.empty();
@@ -36,22 +37,22 @@ export const mailWidget: WidgetDefinition<Settings> = {
     const tokens = await oauth.getTokens();
     if (!hasScope(tokens, GMAIL_SCOPE)) {
       const empty = el.createDiv({ cls: "nd-empty" });
-      empty.createEl("p", { text: "Gmail 認証が必要です（設定 → Deck → 再認証）。" });
+      empty.createEl("p", { text: t().mailGmailAuthenticationRequiredSettingsDeck });
       return;
     }
 
     const toolbar = el.createDiv({ cls: "nd-mail-widget-toolbar" });
-    const openBtn = toolbar.createEl("button", { text: "✏ 作成" });
+    const openBtn = toolbar.createEl("button", { text: t().mailCompose2 });
     openBtn.addEventListener("click", () => void openMailViewAt(ctx.app, ""));
-    const refreshBtn = toolbar.createEl("button", { text: "⟳ 更新" });
+    const refreshBtn = toolbar.createEl("button", { text: t().mailRefresh });
     refreshBtn.addEventListener("click", () => void mailWidget.render(el, settings, ctx));
 
-    const status = el.createDiv({ cls: "nd-muted", text: "読み込み中…" });
+    const status = el.createDiv({ cls: "nd-muted", text: t().mailLoading });
     try {
       const threads = await listThreads(oauth, settings.query || "in:inbox", settings.maxItems);
       status.remove();
       if (threads.length === 0) {
-        el.createEl("p", { cls: "nd-empty", text: "メールなし 🎉" });
+        el.createEl("p", { cls: "nd-empty", text: t().mailNoMail2 });
         return;
       }
       const ul = el.createEl("ul", { cls: "nd-mail-widget-list" });
@@ -69,15 +70,15 @@ export const mailWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("検索クエリ")
-      .setDesc("Gmail 検索構文。例: in:inbox / is:unread / from:boss@x.com")
+      .setName(t().mailSearchQuery)
+      .setDesc(t().mailGmailSearchSyntaxExamplesIn)
       .addText((t) => {
         t.setValue(settings.query);
         t.inputEl.addClass("deck-input-full");
         t.onChange((v) => onChange({ ...settings, query: v.trim() || "in:inbox" }));
       });
     new Setting(container)
-      .setName("表示件数")
+      .setName(t().mailMessageLimit)
       .addText((t) =>
         t.setValue(String(settings.maxItems)).onChange((v) => {
           const n = parseInt(v, 10);

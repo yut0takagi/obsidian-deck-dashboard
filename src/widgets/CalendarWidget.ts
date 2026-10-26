@@ -32,7 +32,7 @@ function startOfToday(): Date {
 }
 
 function formatTimeRange(ev: CalEvent): string {
-  if (ev.allDay) return "終日";
+  if (ev.allDay) return t().calendarAllDay;
   const fmt = (d: Date) =>
     `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   const sameDay =
@@ -46,11 +46,11 @@ function formatDateHeader(d: Date): string {
   const today = startOfToday();
   const dayMs = 24 * 60 * 60 * 1000;
   const diff = Math.round((d.getTime() - today.getTime()) / dayMs);
-  const wd = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()];
-  const label = `${d.getMonth() + 1}/${d.getDate()}（${wd}）`;
-  if (diff === 0) return `今日 ${label}`;
-  if (diff === 1) return `明日 ${label}`;
-  if (diff === -1) return `昨日 ${label}`;
+  const wd = t().weekdaysShort[d.getDay()];
+  const label = t().calendarText(d.getMonth() + 1, d.getDate(), wd);
+  if (diff === 0) return t().calendarToday(label);
+  if (diff === 1) return t().calendarTomorrow(label);
+  if (diff === -1) return t().calendarYesterday(label);
   return label;
 }
 
@@ -69,7 +69,7 @@ export const calendarWidget: WidgetDefinition<Settings> = {
   type: "calendar",
   label: "Calendar (iCal)",
   description:
-    "Google/Outlook/Apple カレンダーの予定を表示。非公開の iCal URL は 設定 → Deck → カレンダー に名前で登録して参照。",
+    t().calendarShowsEventsFromGoogleOutlook,
   defaultSettings: () => ({
     source: "",
     icalUrl: "",
@@ -87,12 +87,12 @@ export const calendarWidget: WidgetDefinition<Settings> = {
     }
     if (resolved.kind === "unset") {
       const help = el.createDiv({ cls: "nd-empty" });
-      help.createEl("p", { text: "iCal URL が未設定です。" });
+      help.createEl("p", { text: t().calendarIcalUrlIsNotConfigured });
       const ol = help.createEl("ol");
       ol.createEl("li", {
-        text: "Google カレンダー: 設定 → カレンダー → 該当カレンダー → 「カレンダーの統合」→「カレンダーの非公開URL（iCal形式）」をコピー",
+        text: t().calendarGoogleCalendarSettingsSelectYour,
       });
-      ol.createEl("li", { text: "設定 → Deck → カレンダー に名前を付けて URL を登録し、⚙ でその名前を指定" });
+      ol.createEl("li", { text: t().calendarRegisterTheUrlUnderA });
       return;
     }
     // Received dashboards must not make Obsidian contact arbitrary hosts.
@@ -102,7 +102,7 @@ export const calendarWidget: WidgetDefinition<Settings> = {
       return;
     }
 
-    const status = el.createDiv({ cls: "nd-muted", text: "読み込み中…" });
+    const status = el.createDiv({ cls: "nd-muted", text: t().calendarLoading });
     try {
       const ics = await getIcs(check.url);
       const start = startOfToday();
@@ -112,7 +112,7 @@ export const calendarWidget: WidgetDefinition<Settings> = {
       status.remove();
 
       if (events.length === 0) {
-        el.createEl("p", { cls: "nd-empty", text: "予定はありません 🎉" });
+        el.createEl("p", { cls: "nd-empty", text: t().calendarNoEvents });
         return;
       }
 
@@ -160,8 +160,8 @@ export const calendarWidget: WidgetDefinition<Settings> = {
         text.onChange((v) => onChange({ ...settings, icalUrl: v.trim() }));
       });
     new Setting(container)
-      .setName("表示日数")
-      .setDesc("今日から何日先まで表示するか (1=今日のみ / 7=今週)")
+      .setName(t().calendarDaysToDisplay)
+      .setDesc(t().calendarDaysAheadToDisplay1)
       .addText((t) =>
         t.setValue(String(settings.windowDays)).onChange((v) => {
           const n = parseInt(v, 10);
@@ -169,7 +169,7 @@ export const calendarWidget: WidgetDefinition<Settings> = {
         })
       );
     new Setting(container)
-      .setName("最大件数")
+      .setName(t().calendarMaximumEvents)
       .addText((t) =>
         t.setValue(String(settings.maxEvents)).onChange((v) => {
           const n = parseInt(v, 10);

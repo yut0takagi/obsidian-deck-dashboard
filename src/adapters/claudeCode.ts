@@ -1,4 +1,5 @@
 import { Platform } from "obsidian";
+import { t } from "../core/i18n";
 
 export interface ClaudeCodeResponse {
   text: string;
@@ -23,7 +24,7 @@ export async function runClaudeP(
   extraArgs: string[] = []
 ): Promise<ClaudeCodeResponse> {
   if (!Platform.isDesktop) {
-    throw new Error("claude -p はデスクトップ版のみ対応です。");
+    throw new Error(t().claudeCodeClaudePIsOnlySupported);
   }
   // eslint-disable-next-line @typescript-eslint/no-require-imports, no-undef -- child_process is desktop-only; lazy require keeps it out of the mobile bundle
   const { spawn } = require("child_process") as typeof import("child_process");
@@ -40,20 +41,20 @@ export async function runClaudeP(
     let stderr = "";
     const timer: number = window.setTimeout(() => {
       child.kill();
-      reject(new Error("claude -p タイムアウト (120秒)"));
+      reject(new Error(t().claudeCodeClaudePTimedOut120));
     }, 120_000);
     child.stdout.on("data", (d: NodeBytes) => (stdout += d.toString("utf-8")));
     child.stderr.on("data", (d: NodeBytes) => (stderr += d.toString("utf-8")));
     child.on("error", (e: Error) => {
       window.clearTimeout(timer);
-      reject(new Error(`spawn失敗: ${e.message}`));
+      reject(new Error(t().claudeCodeFailedToStartProcess(e.message)));
     });
     child.on("close", (code: number | null) => {
       window.clearTimeout(timer);
       if (code !== 0) {
         reject(
           new Error(
-            `claude exited code=${code}\nstderr: ${stderr.trim() || "(なし)"}\nstdout: ${stdout.slice(0, 200)}`
+            t().claudeCodeClaudeExitedCodeStderrStdout(code, stderr.trim() || t().noneLabel, stdout.slice(0, 200))
           )
         );
         return;

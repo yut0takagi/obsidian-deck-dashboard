@@ -19,6 +19,7 @@ import {
 import { MailComposeModal } from "../ui/MailComposeModal";
 import { loadMailConfig, type MailConfig } from "./mailConfig";
 import { generateReplyDraft } from "../ai/mailAssist";
+import { t } from "./i18n";
 
 const GMAIL_SCOPE = "https://www.googleapis.com/auth/gmail.modify";
 
@@ -43,7 +44,7 @@ export class MailView extends ItemView {
     return VIEW_TYPE_MAIL;
   }
   getDisplayText(): string {
-    return "メール";
+    return t().mailMail;
   }
   getIcon(): string {
     return "mail";
@@ -56,15 +57,15 @@ export class MailView extends ItemView {
     root.addClass("nd-mail-view");
 
     const toolbar = root.createDiv({ cls: "nd-mail-toolbar" });
-    const refreshBtn = toolbar.createEl("button", { text: "⟳ 更新" });
+    const refreshBtn = toolbar.createEl("button", { text: t().mailRefresh });
     refreshBtn.addEventListener("click", () => void this.refresh());
-    const composeBtn = toolbar.createEl("button", { text: "✏ 新規作成", cls: "mod-cta" });
+    const composeBtn = toolbar.createEl("button", { text: t().mailCompose, cls: "mod-cta" });
     composeBtn.addEventListener("click", () => this.openCompose());
 
     const searchInput = toolbar.createEl("input", {
       type: "text",
       cls: "nd-mail-search",
-      attr: { placeholder: "🔍 検索（Enterで実行）" },
+      attr: { placeholder: t().mailSearchPressEnter },
     });
     searchInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
@@ -74,7 +75,7 @@ export class MailView extends ItemView {
     });
 
     const labelSelect = toolbar.createEl("select", { cls: "nd-mail-label-filter" });
-    labelSelect.createEl("option", { text: "全ラベル", value: "" });
+    labelSelect.createEl("option", { text: t().mailAllLabels, value: "" });
     try {
       const labels = await listLabels(this.oauth);
       for (const l of labels.filter((x) => x.type === "user")) {
@@ -132,12 +133,12 @@ export class MailView extends ItemView {
 
   private async openAIReply(m: GmailMessage): Promise<void> {
     if (!this.currentThread) return;
-    const notice = new Notice("AI返信ドラフト生成中…（スレッド要約＋vault背景）", 0);
+    const notice = new Notice(t().mailGeneratingAiReplyThreadSummary, 0);
     try {
       const result = await generateReplyDraft(this.app, this.plugin, this.currentThread, this.config);
       notice.hide();
       const f = buildReplyFields(m);
-      const sourcesLine = result.sources.length ? `参照: ${result.sources.join(", ")}` : "参照: なし";
+      const sourcesLine = result.sources.length ? t().mailSources(result.sources.join(", ")) : t().mailSourcesNone;
       const banner = (result.summary ? `${result.summary}\n\n` : "") + sourcesLine;
       new MailComposeModal(this.app, this.plugin, {
         mode: "reply",
@@ -151,7 +152,7 @@ export class MailView extends ItemView {
       }).open();
     } catch (e) {
       notice.hide();
-      new Notice(`AI返信失敗: ${(e as Error).message}`);
+      new Notice(t().mailAiReplyFailed((e as Error).message));
     }
   }
 
@@ -161,7 +162,7 @@ export class MailView extends ItemView {
       this.listEl.empty();
       const empty = this.listEl.createDiv({ cls: "nd-empty" });
       empty.createEl("p", {
-        text: "Gmail の認証が必要です。設定 → Deck → 「再認証」を実行してください。",
+        text: t().mailGmailAuthenticationRequiredGoTo,
       });
       return false;
     }
@@ -172,13 +173,13 @@ export class MailView extends ItemView {
     if (!this.listEl) return;
     if (!(await this.ensureAuth())) return;
     this.listEl.empty();
-    const status = this.listEl.createDiv({ cls: "nd-muted", text: "読み込み中…" });
+    const status = this.listEl.createDiv({ cls: "nd-muted", text: t().mailLoading });
     try {
       const q = composeQuery(this.config.query, this.searchTerm, this.labelFilter);
       const threads = await listThreads(this.oauth, q, this.config.maxItems);
       status.remove();
       if (threads.length === 0) {
-        this.listEl.createEl("p", { cls: "nd-empty", text: "メールはありません 🎉" });
+        this.listEl.createEl("p", { cls: "nd-empty", text: t().mailNoMail });
         return;
       }
       for (const t of threads) this.renderRow(t);
@@ -203,7 +204,7 @@ export class MailView extends ItemView {
 
   private async showThread(threadId: string): Promise<void> {
     this.detailEl.empty();
-    const status = this.detailEl.createDiv({ cls: "nd-muted", text: "読み込み中…" });
+    const status = this.detailEl.createDiv({ cls: "nd-muted", text: t().mailLoading });
     try {
       const thread = await getThread(this.oauth, threadId);
       status.remove();
@@ -232,39 +233,39 @@ export class MailView extends ItemView {
       card.createEl("div", { cls: "nd-mail-msg-subject", text: m.subject });
       card.createEl("pre", { cls: "nd-mail-msg-body", text: m.bodyText || m.snippet });
       const actions = card.createDiv({ cls: "nd-mail-msg-actions" });
-      const replyBtn = actions.createEl("button", { text: "↩ 返信" });
+      const replyBtn = actions.createEl("button", { text: t().mailReply });
       replyBtn.addEventListener("click", () => this.openReply(m));
-      const fwdBtn = actions.createEl("button", { text: "↪ 転送" });
+      const fwdBtn = actions.createEl("button", { text: t().mailForward });
       fwdBtn.addEventListener("click", () => this.openForward(m));
-      const aiBtn = actions.createEl("button", { text: "🤖 AI返信" });
+      const aiBtn = actions.createEl("button", { text: t().mailAiReply });
       aiBtn.addEventListener("click", () => void this.openAIReply(m));
-      const archiveBtn = actions.createEl("button", { text: "🗄 アーカイブ" });
+      const archiveBtn = actions.createEl("button", { text: t().mailArchive });
       archiveBtn.addEventListener("click", () => {
         void (async () => {
           try {
             await modifyMessageLabels(this.oauth, m.id, [], ["INBOX"]);
-            new Notice("アーカイブしました");
+            new Notice(t().mailArchived);
             void this.refresh();
           } catch (e) {
-            new Notice(`失敗: ${(e as Error).message}`);
+            new Notice(t().mailFailed((e as Error).message));
           }
         })();
       });
-      const trashBtn = actions.createEl("button", { text: "🗑 ゴミ箱" });
+      const trashBtn = actions.createEl("button", { text: t().mailTrash });
       trashBtn.addEventListener("click", () => {
         void (async () => {
           try {
             await trashMessage(this.oauth, m.id);
-            new Notice("ゴミ箱へ移動しました");
+            new Notice(t().mailMovedToTrash);
             void this.refresh();
           } catch (e) {
-            new Notice(`失敗: ${(e as Error).message}`);
+            new Notice(t().mailFailed((e as Error).message));
           }
         })();
       });
       if (m.attachments.length > 0) {
         const att = card.createDiv({ cls: "nd-mail-attachments" });
-        att.createEl("span", { cls: "nd-muted", text: "📎 添付: " });
+        att.createEl("span", { cls: "nd-muted", text: t().mailAttachment });
         for (const a of m.attachments) {
           const b = att.createEl("button", { text: `${a.filename} (${Math.round(a.size / 1024)}KB)` });
           b.addEventListener("click", () => {
@@ -287,7 +288,7 @@ export class MailView extends ItemView {
                 // revoking synchronously can cancel the download.
                 window.setTimeout(() => URL.revokeObjectURL(url), 10_000);
               } catch (e) {
-                new Notice(`添付取得失敗: ${(e as Error).message}`);
+                new Notice(t().mailFailedToRetrieveAttachment((e as Error).message));
               }
             })();
           });

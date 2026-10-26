@@ -6,6 +6,7 @@ import {
   getAISessionRegistry,
 } from "../core/AISessionRegistry";
 import { AIDelegationModal } from "./AIDelegationModal";
+import { t } from "../core/i18n";
 
 export interface AISessionListOptions {
   app: App;
@@ -46,13 +47,13 @@ export class AISessionListModal extends Modal {
     const { contentEl } = this;
     contentEl.empty();
     contentEl.addClass("nd-ai-list-modal");
-    contentEl.createEl("h2", { text: "🤖 AI移譲セッション" });
+    contentEl.createEl("h2", { text: t().aiSessionListAiDelegationSessions });
 
     const entries = this.registry.list();
     if (entries.length === 0) {
       contentEl.createEl("p", {
         cls: "nd-empty",
-        text: "アクティブなAI移譲セッションはありません",
+        text: t().aiSessionListNoActiveAiDelegationSessions,
       });
       return;
     }
@@ -84,31 +85,31 @@ export class AISessionListModal extends Modal {
     const actions = row.createDiv({ cls: "nd-ai-list-actions" });
 
     if (entry.status === "running") {
-      const reopenBtn = actions.createEl("button", { text: "📺 開く" });
+      const reopenBtn = actions.createEl("button", { text: t().aiSessionListOpen });
       reopenBtn.addEventListener("click", () => this.reopen(entry));
 
-      const abortBtn = actions.createEl("button", { text: "🛑 中止" });
+      const abortBtn = actions.createEl("button", { text: t().aiSessionListStopped });
       abortBtn.addEventListener("click", () => {
         if (this.registry.abort(entry.taskPath)) {
-          new Notice(`中止: ${entry.taskBasename}`);
+          new Notice(t().aiSessionListStopped2(entry.taskBasename));
         }
       });
     } else {
       const removeBtn = actions.createEl("button", { text: "✖" });
-      removeBtn.setAttribute("aria-label", "リストから削除");
+      removeBtn.setAttribute("aria-label", t().aiSessionListRemoveFromList);
       removeBtn.addEventListener("click", () => {
         this.registry.remove(entry.taskPath);
       });
     }
 
-    const logBtn = actions.createEl("button", { text: "📄 ログ" });
+    const logBtn = actions.createEl("button", { text: t().aiSessionListLog });
     logBtn.addEventListener("click", () => void this.openLog(entry));
   }
 
   private reopen(entry: SessionEntry): void {
     const f = this.app.vault.getAbstractFileByPath(entry.taskPath);
     if (!(f instanceof TFile)) {
-      new Notice(`タスクファイル不在: ${entry.taskPath}`);
+      new Notice(t().aiSessionListTaskFileNotFound(entry.taskPath));
       return;
     }
     new AIDelegationModal({
@@ -125,7 +126,7 @@ export class AISessionListModal extends Modal {
   private async openLog(entry: SessionEntry): Promise<void> {
     const f = this.app.vault.getAbstractFileByPath(entry.writer.path);
     if (!(f instanceof TFile)) {
-      new Notice(`ログファイルが見つかりません: ${entry.writer.path}`);
+      new Notice(t().aiSessionListLogFileNotFound(entry.writer.path));
       return;
     }
     const leaf = this.app.workspace.getLeaf("split");

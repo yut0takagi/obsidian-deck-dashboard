@@ -1,5 +1,6 @@
 import { App, Modal, Notice, Setting } from "obsidian";
 import { GoogleOAuth } from "../auth/googleOAuth";
+import { t } from "../core/i18n";
 
 export class GoogleAuthModal extends Modal {
   private oauth: GoogleOAuth;
@@ -12,25 +13,25 @@ export class GoogleAuthModal extends Modal {
   async onOpen(): Promise<void> {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.createEl("h2", { text: "Google Calendar 認証" });
+    contentEl.createEl("h2", { text: t().googleAuthGoogleCalendarAuthentication });
 
     const intro = contentEl.createDiv({ cls: "nd-muted" });
     intro.createEl("p", {
-      text: "1. Google Cloud Console で OAuth 2.0 Client (Desktop) を作成 → credential.json をダウンロード",
+      text: t().googleAuth1CreateAnOauth2,
     });
     intro.createEl("p", {
-      text: "2. 同意画面に Calendar API のスコープ (.../auth/calendar.readonly) を追加 + テストユーザーに自分を入れる",
+      text: t().googleAuth2AddTheCalendarApi,
     });
     intro.createEl("p", {
-      text: "3. 下の入力欄に貼り付け → 認証ボタン",
+      text: t().googleAuth3PasteItIntoThe,
     });
 
     const creds = (await this.oauth.getCredentials()) ?? { client_id: "", client_secret: "" };
     const tokens = await this.oauth.getTokens();
 
     new Setting(contentEl)
-      .setName("credential.json (貼り付け)")
-      .setDesc("ダウンロードしたJSONの中身全部、または客户端ID/secretだけ")
+      .setName(t().googleAuthCredentialsJsonPaste)
+      .setDesc(t().googleAuthPasteTheCompleteDownloadedJson)
       .addTextArea((t) => {
         t.setValue("");
         t.inputEl.rows = 6;
@@ -68,43 +69,43 @@ export class GoogleAuthModal extends Modal {
       const has = (await this.oauth.getTokens()) !== null;
       status.empty();
       status.createEl("p", {
-        text: has ? "状態: ✅ 認証済み" : "状態: ❌ 未認証",
+        text: has ? t().googleAuthStatusAuthenticated : t().googleAuthStatusNotAuthenticated,
       });
     };
     if (tokens) await renderStatus();
-    else status.createEl("p", { text: "状態: ❌ 未認証" });
+    else status.createEl("p", { text: t().googleAuthStatusNotAuthenticated });
 
     const btnRow = contentEl.createDiv({ cls: "nd-btn-row" });
 
-    const signoutBtn = btnRow.createEl("button", { text: "サインアウト" });
+    const signoutBtn = btnRow.createEl("button", { text: t().googleAuthSignOut });
     signoutBtn.addEventListener("click", () => {
       void (async () => {
         await this.oauth.clearTokens();
-        new Notice("サインアウトしました");
+        new Notice(t().googleAuthSignedOut);
         await renderStatus();
       })();
     });
 
-    const saveBtn = btnRow.createEl("button", { text: "credential 保存" });
+    const saveBtn = btnRow.createEl("button", { text: t().googleAuthSaveCredentials });
     saveBtn.addEventListener("click", () => {
       void (async () => {
         if (!creds.client_id || !creds.client_secret) {
-          new Notice("client_id と client_secret 両方必要です");
+          new Notice(t().googleAuthBothClientIdAndClient);
           return;
         }
         await this.oauth.setCredentials(creds);
-        new Notice("credential を保存しました");
+        new Notice(t().googleAuthCredentialsSaved);
       })();
     });
 
     const spacer = btnRow.createDiv();
     spacer.addClass("deck-spacer");
 
-    const authBtn = btnRow.createEl("button", { text: "認証を開始", cls: "mod-cta" });
+    const authBtn = btnRow.createEl("button", { text: t().googleAuthStartAuthentication, cls: "mod-cta" });
     authBtn.addEventListener("click", () => {
       void (async () => {
         if (!creds.client_id || !creds.client_secret) {
-          new Notice("先に credential を保存");
+          new Notice(t().googleAuthSaveCredentialsFirst);
           return;
         }
         await this.oauth.setCredentials(creds);
@@ -112,7 +113,7 @@ export class GoogleAuthModal extends Modal {
           await this.oauth.authenticate();
           await renderStatus();
         } catch (e) {
-          new Notice(`認証失敗: ${(e as Error).message}`);
+          new Notice(t().googleAuthAuthenticationFailed((e as Error).message));
         }
       })();
     });

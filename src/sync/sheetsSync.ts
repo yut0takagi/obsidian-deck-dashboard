@@ -155,13 +155,13 @@ export class SheetsSync {
     const config = await this.getConfig();
     const existing = config[scope];
     if (existing?.spreadsheetId) {
-      new Notice(`${scope} スプシは既に設定済み: ${existing.spreadsheetUrl}`);
+      new Notice(t().sheetsSyncSheetIsAlreadyConfigured(scope, existing.spreadsheetUrl));
       return existing;
     }
     const defaultTitle =
-      scope === "org" ? "Obsidian Tasks (組織)" : "Obsidian Tasks (個人)";
+      scope === "org" ? t().sheetsSyncObsidianTasksOrganization : t().sheetsSyncObsidianTasksPersonal;
     const finalTitle = title ?? defaultTitle;
-    new Notice(`${scope} のGoogle Sheetsを作成中…`);
+    new Notice(t().sheetsSyncGoogleSheetIsBeingCreated(scope));
     const info = await createSpreadsheet(this.oauth, finalTitle, SHEET_NAME);
     await writeRange(this.oauth, info.spreadsheetId, `${SHEET_NAME}!A1:N1`, [HEADER_ROW]);
     const next: ScopeConfig = {
@@ -169,7 +169,7 @@ export class SheetsSync {
       spreadsheetUrl: info.spreadsheetUrl,
     };
     await this.updateScopeConfig(scope, next);
-    new Notice(`✅ ${scope} スプシ作成完了: ${info.spreadsheetUrl}`);
+    new Notice(t().sheetsSyncSheetCreated(scope, info.spreadsheetUrl));
     return next;
   }
 
@@ -178,7 +178,7 @@ export class SheetsSync {
    */
   async syncScope(scope: SyncScope): Promise<SyncReport> {
     if (SheetsSync.isSyncing) {
-      throw new Error("既に同期中です。完了をお待ちください。");
+      throw new Error(t().sheetsSyncSyncIsAlreadyRunningPlease);
     }
     SheetsSync.isSyncing = true;
     try {
@@ -219,7 +219,7 @@ export class SheetsSync {
     const scopeCfg = config[scope];
     if (!scopeCfg?.spreadsheetId) {
       throw new Error(
-        `${scope} スプシ未設定。'Sheets Sync: Setup ${scope}' を先に実行してください。`
+        t().sheetsSyncSheetIsNotConfiguredRun(scope, scope)
       );
     }
     report.spreadsheetUrl = scopeCfg.spreadsheetUrl;
@@ -228,7 +228,7 @@ export class SheetsSync {
     // folder is mine, the user's own tasks would be pushed to the shared sheet.
     if (scope === "org" && !selfOwner) {
       throw new Error(
-        "self_owner が未設定です。設定 → Deck で自分のフォルダ名を入れてから組織シートを同期してください。"
+        t().sheetsSyncSelfOwnerIsNotSet
       );
     }
 
@@ -239,7 +239,7 @@ export class SheetsSync {
 
     // 1. Backfill missing task_ids
     const newIds = await backfillTaskIds(this.app, taskFolder);
-    if (newIds > 0) new Notice(`task_id を ${newIds} 件付与`);
+    if (newIds > 0) new Notice(t().sheetsSyncAssignedTaskIdToTasks(newIds));
 
     // 2. Load both sides
     const vaultTasks = await this.loadVaultTasks(scope, selfOwner);
@@ -303,7 +303,7 @@ export class SheetsSync {
           await this.createVaultTaskFromSheet(sheet.values, now, scope, selfOwner);
           report.pulled++;
         } catch (e) {
-          report.errors.push(`pull失敗 ${id}: ${(e as Error).message}`);
+          report.errors.push(t().sheetsSyncPullFailed(id, (e as Error).message));
         }
         continue;
       }
@@ -394,7 +394,7 @@ export class SheetsSync {
     const plan = planSheetTask(values, now, scope, selfOwner, taskFolder);
     if (plan.rejectedOwner !== null && warnOnce(rejectedOwners, plan.rejectedOwner)) {
       new Notice(
-        `担当「${plan.rejectedOwner.replace(/\s+/g, " ")}」はフォルダ名として使えないため、未割当に入れました。`,
+        t().sheetsSyncOwnerCanTBeUsed(plan.rejectedOwner.replace(/\s+/g, " ")),
         10000
       );
     }
@@ -503,7 +503,7 @@ function planSheetTask(
   taskFolder: string
 ): SheetTaskPlan {
   const title = String(values[COL.title] ?? "").trim();
-  if (!title) throw new Error("タイトルが空");
+  if (!title) throw new Error(t().sheetsSyncTitleIsEmpty);
   const id = String(values[COL.task_id] ?? "").trim() || generateTaskId();
   // Owner resolution:
   // - explicit 担当 cell wins (when it is a usable folder name)
@@ -532,7 +532,7 @@ function planSheetTask(
   const fileTitle = sanitizeFileTitle(title);
   const folder = `${cleanFolder(taskFolder)}/${owner}`;
   const heading = title.replace(/[\u0000-\u001f\u007f]+/g, " ").trim();
-  const body = `# ${heading}\n\nSheets発のタスク。詳細はSheets側を参照。\n`;
+  const body = t().sheetsSyncTaskFromSheetsSeeThe(heading);
   return {
     folder,
     path: `${folder}/${fileTitle}.md`,

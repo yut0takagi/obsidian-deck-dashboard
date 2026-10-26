@@ -4,6 +4,7 @@ import { getDataviewApi } from "../adapters/dataview";
 import { wireInternalLinks } from "./linkHandler";
 import { renderTokenNotice } from "./tokenNotice";
 import { expandFolderTokens } from "../core/pathTokens";
+import { t } from "../core/i18n";
 
 interface Settings {
   query: string;
@@ -13,7 +14,7 @@ interface Settings {
 export const dataviewWidget: WidgetDefinition<Settings> = {
   type: "dataview",
   label: "Dataview Query",
-  description: "Dataviewの DQL クエリを実行して結果を表示する。",
+  description: t().dataviewRunADataviewDqlQuery,
   defaultSettings: () => ({
     query: 'TABLE file.mtime AS "Updated" SORT file.mtime DESC LIMIT 5',
     mode: "dql",
@@ -23,7 +24,7 @@ export const dataviewWidget: WidgetDefinition<Settings> = {
     el.addClass("nd-widget-dataview");
     const dv = getDataviewApi(ctx.app);
     if (!dv) {
-      el.createEl("p", { cls: "nd-empty", text: "Dataview プラグインが必要です。" });
+      el.createEl("p", { cls: "nd-empty", text: t().dataviewTheDataviewPluginIsRequired });
       return;
     }
     const expanded = expandFolderTokens(settings.query, ctx.settings);
@@ -45,8 +46,8 @@ export const dataviewWidget: WidgetDefinition<Settings> = {
   },
   renderSettingsForm(container, settings, onChange) {
     new Setting(container)
-      .setName("モード")
-      .setDesc("DQL: Dataviewクエリ言語 / JS: DataviewJS")
+      .setName(t().dataviewMode)
+      .setDesc(t().dataviewDqlDataviewQueryLanguageJs)
       .addDropdown((d) =>
         d
           .addOption("dql", "DQL")
@@ -55,8 +56,8 @@ export const dataviewWidget: WidgetDefinition<Settings> = {
           .onChange((v) => onChange({ ...settings, mode: v as "dql" | "js" }))
       );
     new Setting(container)
-      .setName("クエリ")
-      .setDesc("Dataview の DQL or JS。{{taskFolder}} / {{meetingFolder}} / {{dailyFolder}} は 設定 → Deck のフォルダに置き換わります")
+      .setName(t().dataviewQuery)
+      .setDesc(t().dataviewDataviewDqlOrJsTaskfolder)
       .addTextArea((t) => {
         t.setValue(settings.query);
         t.inputEl.rows = 8;
